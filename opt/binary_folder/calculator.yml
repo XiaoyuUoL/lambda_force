@@ -1,0 +1,6 @@
+calculator_id: lambda_force
+provides:
+- HOMO
+- LUMO
+specifications:
+  numsteps: 200
