@@ -1,6 +1,12 @@
 calculator_id: lambda_force
 provides:
-- HOMO
-- LUMO
+- force
+- 4p
 specifications:
-  numsteps: 200
+  MMFF: mmff94
+  Software: orca
+  ProcNumber: 4
+  Memory: 10000
+  Functional: m06-2x
+  BasisSet: 3-21g*
+  ImagFreq: 0.

@@ -25,49 +25,37 @@ def FromSmiles(smiles):
     
     return name,coord
 
-## prepare inputs of QC calculation and barkla submission (S0opt)
-def Prepare1():
-    task = 'S0opt'
-
+## prepare inputs of QC calculation
+def QCinput(task):
     if (input.QCFlag.lower() == 'g16'):
         g16.InitPara(task)
-        g16.g16para['name'],g16.g16para['coord'] = FromSmiles(input.SystemSmiles)
+        if (task == 'S0opt'):
+            g16.g16para['name'],g16.g16para['coord'] = FromSmiles(input.SystemSmiles)
+        elif (task in ['S0freq', 'S1force', 'S1opt']):
+            g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('{}/S0opt'.format(input.FilePath), 'coord')
+            g16.g16para['coord'] *= input.au2Angstrom
+        else:
+            print('error: task is not valid for prepare.QCinput')
+            exit()
         g16.GjfGen(g16.g16para)
     
     elif (input.QCFlag.lower() == 'orca'):
         orca.InitPara(task)
-        orca.orcapara['name'],orca.orcapara['coord'] = FromSmiles(input.SystemSmiles)
+        if (task == 'S0opt'):
+            orca.orcapara['name'],orca.orcapara['coord'] = FromSmiles(input.SystemSmiles)
+        elif (task in ['S0freq', 'S1force', 'S1opt']):
+            orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('{}/S0opt'.format(input.FilePath), 'coord')
+            orca.orcapara['coord'] *= input.au2Angstrom
+        else:
+            print('error: task is not valid for QCinput')
+            exit()
         orca.InpGen(orca.orcapara)
     
     else:
         print('"QCFlag" now has only two options: g16 or orca')
         exit()
-
-## prepare inputs of QC calculation and barkla submission (S0freq)
-def Prepare2():
-    task = 'S0freq'
-    if (input.QCFlag.lower() == 'g16'):
-
-        # S0 freq
-        g16.InitPara(task)
-        g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('{}/S0opt'.format(input.FilePath), 'coord')
-        g16.g16para['coord'] *= input.au2Angstrom
-        g16.GjfGen(g16.g16para)
-
-    elif (input.QCFlag.lower() == 'orca'):
-
-        # S0 freq
-        orca.InitPara(task)
-        orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('{}/S0opt'.format(input.FilePath), 'coord')
-        orca.orcapara['coord'] *= input.au2Angstrom
-        orca.InpGen(orca.orcapara)
-
-    else:
-        print('"QCFlag" now has only two options: g16 or orca')
-        exit()
-
-# check if there is no imaginary frequency (ensure the correction of S0 opt task)
-# return 0
+    
+# check if there is no imaginary frequency (ensure the correction of S0opt task)
 def CheckFreq():
     if (input.QCFlag.lower() == 'g16'):
         AtomMass, ModeFreq, ModeQ, ModeVect = g16.FchkRead('{}/S0freq'.format(input.FilePath), 'vibration')
@@ -77,8 +65,8 @@ def CheckFreq():
         print('"QCFlag" now has only two options: g16 or orca')
         exit()
     
-    # normal termination of S0 opt
-    if (ModeFreq[0] > 0.):
+    # normal termination of S0opt
+    if (ModeFreq[0] > input.ImagFreq):
         return 0
     # rerun S0 opt with distorted initial geometry
     else:
@@ -107,56 +95,3 @@ def CheckFreq():
             orca.InpGen(orca.orcapara)
 
         return -1
-
-## prepare inputs of QC calculation and barkla submission (S1force)
-def Prepare3():
-    if (input.QCFlag.lower() == 'g16'):
-        
-        g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('{}/S0opt'.format(input.FilePath), 'coord')
-        g16.g16para['coord'] *= input.au2Angstrom
-
-        # S1 force
-        task = 'S1force'
-        g16.InitPara(task)
-        g16.GjfGen(g16.g16para)
-
-        
-    elif (input.QCFlag.lower() == 'orca'):
-                
-        orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('{}/S0opt'.format(input.FilePath), 'coord')
-        orca.orcapara['coord'] *= input.au2Angstrom
-
-        # S1 force
-        task = 'S1force'
-        orca.InitPara(task)
-        orca.InpGen(orca.orcapara)
-
-    else:
-        print('"QCFlag" now has only two options: g16 or orca')
-        exit()
-
-## prepare inputs of QC calculation and barkla submission (S1opt)
-def Prepare4():
-    if (input.QCFlag.lower() == 'g16'):
-        
-        g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('{}/S0opt'.format(input.FilePath), 'coord')
-        g16.g16para['coord'] *= input.au2Angstrom
-
-        # S1 opt
-        task = 'S1opt'
-        g16.InitPara(task)
-        g16.GjfGen(g16.g16para)
-        
-    elif (input.QCFlag.lower() == 'orca'):
-                
-        orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('{}/S0opt'.format(input.FilePath), 'coord')
-        orca.orcapara['coord'] *= input.au2Angstrom
-
-        # S1 opt
-        task = 'S1opt'
-        orca.InitPara(task)
-        orca.InpGen(orca.orcapara)
-
-    else:
-        print('"QCFlag" now has only two options: g16 or orca')
-        exit()

@@ -8,7 +8,7 @@ if [[ -z "$NAME" ]]; then
     exit 1
 fi
 
-VERSION=$(git describe)
+VERSION=$(git describe --always)
 
 if [[ ! "$VERSION" =~ ^$NAME/v* ]]; then
     echo "Last tag did not confirm to naming spec $NAME/v1.1.1"

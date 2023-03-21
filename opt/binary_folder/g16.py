@@ -4,8 +4,8 @@ import numpy as np
 
 g16para = {
     'file': '',
-    'ProcNumber': input.ProcNumber,
-    'memory': '{:>d}MW'.format(input.memeory),
+    'procnumber': input.ProcNumber,
+    'memory': '{:>d}MW'.format(input.Memory),
     'chkfile': '',
     'keywords': [],
     'desc': '',
@@ -27,13 +27,13 @@ keywords = {
 def InitPara(task):
     g16para['desc'] = task
     g16para['keywords'] = keywords[task]
-    g16para['file'] = '{}/{}'.format(input.FilePath, task)
+    g16para['file'] = '{}'.format(task)
     g16para['chkfile'] = '{}.chk'.format(task)
 
 # generate input file for g16 calculation
 def GjfGen(para):
     fout = open('{}.gjf'.format(para['file']), 'w')
-    fout.writelines('%nprocshared={:d}\n'.format(para['ProcNumber']))
+    fout.writelines('%nprocshared={:d}\n'.format(para['procnumber']))
     fout.writelines('%mem={}\n'.format(para['memory']))
     fout.writelines('%chk={}\n'.format(para['chkfile']))
     keywords = '#p'
@@ -52,21 +52,22 @@ def GjfGen(para):
 
 # read fchk file
 # keyword options:
+# 'energy-gd': return energy of ground state
+# 'energy-ex': return energy of excited states
 # 'coord': return atom name and atom coordinate
 # 'gradient': return energy gradient
 # 'vibration': return normal mode information
 # 'zindices': return indice of zmatrix
-# 'orbital': return AO/MO information
 def FchkRead(fchkfile, keyword):
     fin = open('{}.fchk'.format(fchkfile), 'r')
     
-    # 'energy': return energy of electronic ground state
+    # 'energy-gd': return energy of electronic ground state
     if (keyword.lower() == 'energy-gd'):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
             # read Total energy
-            if(len(words) > 2 and words[0] == 'SCF' and words[1] == 'Energy'):
+            if (len(words) > 2 and words[0] == 'SCF' and words[1] == 'Energy'):
                 fin.close()
                 return float(words[3])  # unit: Hartree
             line = fin.readline()
@@ -75,7 +76,7 @@ def FchkRead(fchkfile, keyword):
         print('guassian: No total energy information in {}.fchk'.format(fchkfile))
         exit()
 
-    # 'energy': return energy of electronic excited state
+    # 'energy': return energies of electronic excited state
     if (keyword.lower() == 'energy-ex'):
         IfGetSN = False
         StateNumber = 0
@@ -84,7 +85,7 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read Total energy
-            if(len(words) > 3 and words[0] == 'ETran' and words[1] == 'state' and words[2] == 'values'):
+            if (len(words) > 3 and words[0] == 'ETran' and words[1] == 'state' and words[2] == 'values'):
                 IfGetSN = True
                 StateNumber = int(words[5]) // 16
                 for i in range(int((StateNumber * 16 - 1) / 5) + 1):
@@ -120,16 +121,16 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read number of atoms
-            if(len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
+            if (len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
                 IfGetAN = True
                 AtomNumber = int(words[4])
             # read atomic number (name)
-            elif(len(words) > 2 and words[0] == 'Atomic' and words[1] == 'numbers' and IfGetAN):
+            elif (len(words) > 2 and words[0] == 'Atomic' and words[1] == 'numbers' and IfGetAN):
                 IfGetName = True
                 for i in range(int((AtomNumber - 1) / 6) + 1):
                     Name += fin.readline().rstrip().split()
             # read Cartesian coordinates
-            elif(len(words) > 3 and words[0] == 'Current' and words[1] == 'cartesian' and words[2] == 'coordinates' and IfGetAN):
+            elif (len(words) > 3 and words[0] == 'Current' and words[1] == 'cartesian' and words[2] == 'coordinates' and IfGetAN):
                 IfGetCoord = True
                 for i in np.arange(int((AtomNumber * 3 - 1) / 5) + 1):
                     Coord += fin.readline().rstrip().split()
@@ -150,11 +151,11 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read atom number
-            if(len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
+            if (len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
                 IfGetAN = True
                 AtomNumber = int(words[4])
             # read gradient
-            elif(len(words) > 2 and words[0] == 'Cartesian' and words[1] == 'Gradient' and IfGetAN):
+            elif (len(words) > 2 and words[0] == 'Cartesian' and words[1] == 'Gradient' and IfGetAN):
                 Gradient = []
                 for i in np.arange(int((AtomNumber * 3 - 1) / 5) + 1):
                     Gradient += fin.readline().rstrip().split()
@@ -182,27 +183,27 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read atom number
-            if(len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
+            if (len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
                 IfGetAN = True
                 AtomNumber = int(words[4])
             # read number of normal modes
-            elif(len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'Normal' and words[3] == 'Modes'):
+            elif (len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'Normal' and words[3] == 'Modes'):
                 IfGetMN = True
                 ModeNumber = int(words[5])
             # read information of atom masses (3N array)
-            elif(len(words) > 1 and words[0] == 'Vib-AtMass' and IfGetAN):
+            elif (len(words) > 1 and words[0] == 'Vib-AtMass' and IfGetAN):
                 IfGetMass = True
                 for i in np.arange(int((AtomNumber - 1) / 5) + 1):
                     masses = fin.readline().rstrip().split()
                     for mass in masses:
                         AtomMass += [mass, mass, mass]
             # read information of normal modes: frequency, reduce mass, force constant and IR intensity
-            elif(len(words) > 1 and words[0] == 'Vib-E2' and IfGetMN):
+            elif (len(words) > 1 and words[0] == 'Vib-E2' and IfGetMN):
                 IfGetModeInfo = True
                 for i in np.arange(int((ModeNumber * 4 - 1) / 5) + 1):
                     ModeInfo += fin.readline().rstrip().split()
             # read information of normal modes: vibration vector
-            elif(len(words) > 1 and words[0] == 'Vib-Modes' and IfGetAN and IfGetMN):
+            elif (len(words) > 1 and words[0] == 'Vib-Modes' and IfGetAN and IfGetMN):
                 IfGetModeVect = True
                 for i in np.arange(int((ModeNumber * AtomNumber * 3 - 1) / 5) + 1):
                     ModeVect += fin.readline().rstrip().split()
@@ -223,12 +224,6 @@ def FchkRead(fchkfile, keyword):
 
         ModeVect = np.reshape(np.array(ModeVect, dtype=float), (ModeNumber, AtomNumber * 3))
 
-        # remove imaginary frequency modes
-        for i in np.arange(ModeNumber - 1, -1, -1):
-            if (ModeFreq[i] < 0.):
-                ModeFreq = np.delete(ModeFreq, i)
-                ModeVect = np.delete(ModeVect, i, 0)
-        
         ModeNumber = len(ModeFreq)
 
         for i in np.arange(ModeNumber):
@@ -236,10 +231,10 @@ def FchkRead(fchkfile, keyword):
         for i in np.arange(AtomNumber * 3):
             ModeVect[:, i] *= np.sqrt(AtomMass[i])    # mass-weigthed displacement
         
-        if (ModeFreq[0] < 0.):
-            ModeQ = np.zeros_like(ModeFreq)
-        else:
-            ModeQ = np.sqrt(ModeFreq * (1. / input.au2aum) / input.hbar)
+        ModeQ = np.zeros_like(ModeFreq)
+        for i,freq in enumerate(ModeFreq):
+            if (ModeFreq[0] > 0.):
+                ModeQ[i] = np.sqrt(freq * (1. / input.au2aum) / input.hbar)
         
         return AtomMass, ModeFreq, ModeQ, ModeVect
     
@@ -248,7 +243,7 @@ def FchkRead(fchkfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if(len(words) > 4 and words[0] == 'Redundant' and words[1] == 'internal' and words[2] == 'coordinate' and words[3] == 'indices'):
+            if (len(words) > 4 and words[0] == 'Redundant' and words[1] == 'internal' and words[2] == 'coordinate' and words[3] == 'indices'):
                 ZCoordNumber = int(words[6]) // 4
                 ZIndices = []
                 for i in np.arange(int((ZCoordNumber * 4 - 1) / 6) + 1):
@@ -264,64 +259,6 @@ def FchkRead(fchkfile, keyword):
         print('guassian: No internal coordinate information in {}.fchk'.format(fchkfile))
         exit()
 
-    # return orbital information (AO, MO)
-    elif (keyword.lower() == 'orbital'):
-        def GetBasisFunc(elements):
-            BasisFunc = []
-            for element in elements:
-                for bf in input.BasisFunc:
-                    if (element >= bf[0] and element <= bf[1]):
-                        BasisFunc.append(bf[2])
-            
-            return np.array(BasisFunc)
-
-        # calculate the power of symmetry matrix
-        def MatrixPower(M, x):
-            e,v = np.linalg.eigh(M)
-            return np.matmul(v, np.matmul(np.diag(np.power(e, x)), v.T))
-
-        IfGetON = False
-        OccNumber = 0
-        IfGetAN = False
-        Element = []
-        BasisNumber = 0
-        IfGetMO = False
-        MOCoeff = []
-        line = fin.readline()
-        while (len(line) != 0):
-            words = line.rstrip().split()
-            if(len(words) > 2 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'alpha' and words[3] == 'electrons'):
-                IfGetON = True
-                OccNumber = int(words[-1])
-            elif(len(words) > 2 and words[0] == 'Atomic' and words[1] == 'numbers'):
-                IfGetAN = True
-                AtomNumber = int(words[-1])
-                for i in range(int((AtomNumber - 1) / 6) + 1):
-                    Element += fin.readline().rstrip().split()
-                Element = np.array(Element, dtype=int)
-                BasisNumber = np.sum(GetBasisFunc(Element))
-                #print(BasisNumber)
-            #elif(len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'basis' and words[3] == 'functions'):
-            #    print(int(words[-1]))
-            elif(len(words) > 5 and words[0] == 'Alpha' and words[1] == 'MO' and words[2] == 'coefficients' and IfGetON and IfGetAN):
-                IfGetMO = True
-                for i in np.arange(int((BasisNumber * BasisNumber - 1) / 5) + 1):
-                    MOCoeff += fin.readline().rstrip().split()
-            line = fin.readline()
-        fin.close()
-
-        if (not IfGetMO):
-            print('guassian: No orbital information in {}.fchk'.format(fchkfile))
-            exit()
-        
-        MOCoeff = np.reshape(np.array(MOCoeff, dtype=float), (BasisNumber, BasisNumber)).T
-        AOoverlap = MatrixPower(np.matmul(MOCoeff, MOCoeff.T), -1.0)
-
-        BasisFunc = GetBasisFunc(Element)
-        indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]), list(np.cumsum(BasisFunc))]).T # indices of basis function for each atom
-        
-        return indices, AOoverlap, MOCoeff[:, :OccNumber], MOCoeff[:, OccNumber:]
-        
     else:
         print('options are needed')
         exit()

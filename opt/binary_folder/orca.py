@@ -4,7 +4,7 @@ import numpy as np
 
 orcapara = {
     'file': '',
-    'ProcNumber': input.ProcNumber,
+    'procnumber': input.ProcNumber,
     'keywords': [],
     'desc': '',
     'charge': 0,
@@ -53,13 +53,13 @@ def InitPara(task):
     orcapara['keywords'] = keywords[task]
     orcapara['module'] = modules[task]
     orcapara['option'] = options[task]
-    orcapara['file'] = '{}/{}'.format(input.FilePath, task)
+    orcapara['file'] = task
 
 # generate input file for orca calculation
 def InpGen(para):
     fout = open('{}.inp'.format(para['file']), 'w')
     fout.writelines('%pal\n')
-    fout.writelines('  nprocs {:d}\n'.format(para['ProcNumber']))
+    fout.writelines('  nprocs {:d}\n'.format(para['procnumber']))
     fout.writelines('end\n')
     keywords = '!'
     for keyword in para['keywords']:
@@ -78,6 +78,8 @@ def InpGen(para):
 
 # read information from orca log files
 # keyword options:
+# 'energy-gd': return energy of ground state
+# 'energy-ex': return energy of excited states
 # 'coord': return atom name and atom coordinate
 # 'gradient': return energy gradient
 # 'vibration': return normal mode information
@@ -86,18 +88,41 @@ def LogRead(logfile, keyword):
     fin = open('{}.log'.format(logfile), 'r')
     
     # 'energy': return energy of electronic ground state
-    if (keyword.lower() == 'energy'):
+    if (keyword.lower() == 'energy-gd'):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            # read total energy
-            if(len(words) > 2 and words[0] == 'Total' and words[1] == 'Energy'):
+            # read ground state energy
+            if (len(words) > 2 and words[0] == 'Total' and words[1] == 'Energy'):
                 fin.close()
                 return float(words[3])  # unit: Hartree
             line = fin.readline()
         fin.close()
 
-        print('orca: No total energy information in {}.log'.format(logfile))
+        print('orca: No ground state energy information in {}.log'.format(logfile))
+        exit()
+
+    # 'energy': return energies of electronic excited state
+    if (keyword.lower() == 'energy-ex'):
+        line = fin.readline()
+        while (len(line) != 0):
+            words = line.rstrip().split()
+            # read excited state energy
+            if (len(words) > 2 and words[0] == 'TD-DFT' and words[1] == 'EXCITED'):
+                e = []
+                line = fin.readline()
+                while (len(line) != 0):
+                    words = line.rstrip().split()
+                    # read total energy
+                    if (len(words) > 1 and words[0] == 'STATE'):
+                        e.append(float(words[3]))
+                    elif (len(words) > 1 and words[0] == 'TD-DFT-EXCITATION'):
+                        fin.close()
+                        return e   # unit: Hartree
+                    line = fin.readline()
+        fin.close()
+
+        print('orca: No ground state energy information in {}.log'.format(logfile))
         exit()
 
     # 'coord': return atom name and atom coordinate
@@ -106,7 +131,7 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read atomic number and Cartesian coordinates
-            if(len(words) == 3 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)'):
+            if (len(words) == 3 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)'):
                 Name = []
                 Coord = []
                 fin.readline()
@@ -131,7 +156,7 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read gradient
-            if(len(words) == 2 and words[0] == 'CARTESIAN' and words[1] == 'GRADIENT'):
+            if (len(words) == 2 and words[0] == 'CARTESIAN' and words[1] == 'GRADIENT'):
                 Gradient = []
                 fin.readline()
                 fin.readline()
@@ -162,7 +187,7 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read atom number and atomic mass
-            if(len(words) == 3 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)'):
+            if (len(words) == 3 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)'):
                 IfGetAtom = True
                 fin.readline()
                 fin.readline()
@@ -173,7 +198,7 @@ def LogRead(logfile, keyword):
                     AtomMass+= [data[4], data[4], data[4]]
                     line = fin.readline()
             # read frequency
-            elif(len(words) == 2 and words[0] == 'VIBRATIONAL' and words[1] == 'FREQUENCIES' and IfGetAtom):
+            elif (len(words) == 2 and words[0] == 'VIBRATIONAL' and words[1] == 'FREQUENCIES' and IfGetAtom):
                 IfGetVib = True
                 fin.readline()
                 fin.readline()
@@ -188,7 +213,7 @@ def LogRead(logfile, keyword):
                     else:
                         ZeroIndex.append(i)
             # read vibration vector
-            elif(len(words) == 2 and words[0] == 'NORMAL' and words[1] == 'MODES' and IfGetVib):
+            elif (len(words) == 2 and words[0] == 'NORMAL' and words[1] == 'MODES' and IfGetVib):
                 IfGetMode = True
                 ModeVectTmp = np.zeros((AtomNumber * 3, AtomNumber * 3), dtype=float)
                 fin.readline()
@@ -221,8 +246,11 @@ def LogRead(logfile, keyword):
                 index += 1
         for i in np.arange(AtomNumber * 3):
             ModeVect[:, i] *= np.sqrt(AtomMass[i])
-      
-        ModeQ = np.sqrt(ModeFreq * (1. / input.au2aum) / input.hbar)
+        
+        ModeQ = np.zeros_like(ModeFreq)
+        for i,freq in enumerate(ModeFreq):
+            if (ModeFreq[0] > 0.):
+                ModeQ[i] = np.sqrt(freq * (1. / input.au2aum) / input.hbar)
         
         return AtomMass, ModeFreq, ModeQ, ModeVect
 
@@ -231,7 +259,7 @@ def LogRead(logfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if(len(words) == 3 and words[0] == 'Redundant' and words[1] == 'Internal' and words[2] == 'Coordinates'):
+            if (len(words) == 3 and words[0] == 'Redundant' and words[1] == 'Internal' and words[2] == 'Coordinates'):
                 ZIndices = []
                 fin.readline()
                 fin.readline()
