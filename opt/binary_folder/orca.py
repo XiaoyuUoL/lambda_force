@@ -252,11 +252,12 @@ def LogRead(logfile, keyword):
         for i in np.arange(AtomNumber * 3):
             if i not in ZeroIndex:
                 ModeVect[index, :] = ModeVectTmp[i, :]
-                ModeVect[index, :] /= np.sqrt(np.sum(ModeVectTmp[i, :] * ModeVectTmp[i, :]))
                 index += 1
         for i in np.arange(AtomNumber * 3):
             ModeVect[:, i] *= np.sqrt(AtomMass[i])
-        
+        for i in np.arange(ModeNumber):
+                ModeVect[i, :] /= np.sqrt(np.sum(ModeVect[i, :] * ModeVect[i, :]))
+
         ModeQ = np.zeros_like(ModeFreq)
         for i,freq in enumerate(ModeFreq):
             if (ModeFreq[0] > 0.):
