@@ -4,6 +4,7 @@ import input
 ## S0opt and S0freq calculations
 # S0opt
 computation.QCCalculate('S0opt')
+
 # S1freq
 computation.QCCalculate('S0freq')
 # check if S0 opt need to be rerun

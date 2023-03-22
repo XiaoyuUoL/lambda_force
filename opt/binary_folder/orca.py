@@ -90,15 +90,18 @@ def LogRead(logfile, keyword):
     # 'energy': return energy of electronic ground state
     if (keyword.lower() == 'energy-gd'):
         line = fin.readline()
+        e = 0.0
         while (len(line) != 0):
             words = line.rstrip().split()
             # read ground state energy
             if (len(words) > 2 and words[0] == 'Total' and words[1] == 'Energy'):
-                fin.close()
-                return float(words[3])  # unit: Hartree
+                e = float(words[3])
             line = fin.readline()
         fin.close()
 
+        if (e != 0.0):
+            return e  # unit: Hartree
+        
         print('orca: No ground state energy information in {}.log'.format(logfile))
         exit()
 
@@ -117,10 +120,13 @@ def LogRead(logfile, keyword):
                     if (len(words) > 1 and words[0] == 'STATE'):
                         e.append(float(words[3]))
                     elif (len(words) > 1 and words[0] == 'TD-DFT-EXCITATION'):
-                        fin.close()
-                        return e   # unit: Hartree
+                        break
                     line = fin.readline()
+            line = fin.readline()
         fin.close()
+
+        if (len(e) != 0):
+            return e   # unit: Hartree
 
         print('orca: No ground state energy information in {}.log'.format(logfile))
         exit()
@@ -128,6 +134,8 @@ def LogRead(logfile, keyword):
     # 'coord': return atom name and atom coordinate
     elif (keyword.lower() == 'coord'):
         line = fin.readline()
+        Name = []
+        Coord = []
         while (len(line) != 0):
             words = line.rstrip().split()
             # read atomic number and Cartesian coordinates
@@ -137,16 +145,17 @@ def LogRead(logfile, keyword):
                 fin.readline()
                 fin.readline()
                 line = fin.readline()
-                while (line != ''):
+                while (line != '\n'):
                     data = line.rstrip().split()
                     Name.append(data[1])
                     Coord.append([data[5], data[6], data[7]])  # unit: Bohr
-                    line = fin.readline().rstrip()
-                fin.close()
-                return Name, np.array(Coord, dtype=float)
+                    line = fin.readline()
             line = fin.readline()
         fin.close()
 
+        if (len(Name) != 0):
+            return Name, np.array(Coord, dtype=float)
+        
         print('orca: No coordinate information in {}.log'.format(logfile))
         exit()
 
@@ -160,8 +169,9 @@ def LogRead(logfile, keyword):
                 Gradient = []
                 fin.readline()
                 fin.readline()
-                while (line != ''):
-                    data = fin.readline().rstrip()
+                line = fin.readline()
+                while (line != '\n'):
+                    data = line.rstrip().split()
                     Gradient += [data[3], data[4], data[5]]
                     line = fin.readline()
                 fin.close()
@@ -192,7 +202,7 @@ def LogRead(logfile, keyword):
                 fin.readline()
                 fin.readline()
                 line = fin.readline()
-                while (line != ''):
+                while (line != '\n'):
                     AtomNumber += 1
                     data = line.rstrip().split()
                     AtomMass+= [data[4], data[4], data[4]]

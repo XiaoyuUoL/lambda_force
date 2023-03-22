@@ -44,7 +44,7 @@ de = 1e-5                                                # threshold for discard
 
 # Freq check for S0opt
 ImagFreq = CalDict['specifications']['ImagFreq']
-print('ImagFreq:', ImagFreq)
+#print('ImagFreq:', ImagFreq)
 
 # Calculation properties
 Properties = CalDict['provides']

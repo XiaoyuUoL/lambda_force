@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import yaml
 
 import input
 import g16
@@ -12,8 +13,10 @@ def QCCalculate(task):
         prepare.QCinput(task)
         os.system('./{}_{}.sh'.format(input.QCFlag.lower(), task))     #### check the command of G16/ORCA
     elif (task == 'CheckFreq'):
-        prepare.CheckFreq()
-        os.system('./{}_{}.sh'.format(input.QCFlag.lower(), 'S0opt'))     #### check the command of G16/ORCA
+        result = prepare.CheckFreq()
+        if (result == -1):
+            os.system('./{}_{}.sh'.format(input.QCFlag.lower(), 'S0opt'))     #### check the command of G16/ORCA
+        return result
     else:
         print('error: task is not valid for computation.QCcalculate')
         exit()
@@ -185,9 +188,9 @@ def Lambda4pCal():
         AtomMass, ModeFreq, ModeQ, ModeVect = orca.LogRead('S0freq', 'vibration')
         ########### NEED TO BE UPDATED TO ADD READING OPTION FOR EXCITED STATE ENERGY IN ORCA
         ES0S0 = orca.LogRead('S0opt', 'energy-gd')
-        ES1S0 = orca.LogRead('S1force', 'energy-ex')[0]
+        ES1S0 = orca.LogRead('S1force', 'energy-ex')[0] + ES0S0
         ES0S1 = orca.LogRead('S1opt', 'energy-gd')
-        ES1S1 = orca.LogRead('S1opt', 'energy-ex')[0]
+        ES1S1 = orca.LogRead('S1opt', 'energy-ex')[0] + ES0S1
     else:
         print('"QCFlag" now has only two options: g16 or orca')
         exit()
@@ -203,6 +206,7 @@ def Lambda4pCal():
     R = WilsonMatrix(FinalCoord, Zindices, AtomMass, ModeVect.T)
     ModeQ0 = np.matmul(R, ZCoordDiff(FinalCoord, InitCoord, Zindices)) * ModeQ
 
+    print(ES0S0, ES1S0, ES0S1, ES1S1)
     return ES0S1 - ES0S0, ES1S0 - ES1S1, ModeFreq, ModeQ0
     
 # calculate HR via force/gradient
@@ -232,6 +236,7 @@ def LambdaForceCal():
     return ModeFreq, ModeQ0
 
 def HRCalculate():
+    results = {}
     if ('force' in input.Properties and '4p' in input.Properties):
         Lambda10,Lambda01,Freq,QDisp = Lambda4pCal()
         Lambda10 *= input.au2eV
@@ -250,6 +255,12 @@ def HRCalculate():
                             QDisp[i], HRDisp[i], LambdaDisp[i] / (2 * np.pi * input.c * input.au2fs),
                             QForce[i], HRForce[i], LambdaForce[i] / (2 * np.pi * input.c * input.au2fs)))
         fout.close()
+
+        results['lambda10'] = float(Lambda10)
+        results['lambda01'] = float(Lambda01)
+        results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
+        results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
+        results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
         fout = open('lambda.dat', 'w')
         fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV  lambdaForce/eV\n')
         fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
@@ -268,6 +279,8 @@ def HRCalculate():
             fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
                             QForce[i], HRForce[i], LambdaForce[i] / (2 * np.pi * input.c * input.au2fs)))
         fout.close()
+        
+        results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
         fout = open('lambda.dat', 'w')
         fout.writelines(' lambdaForce/eV\n')
         fout.writelines('{:14.7f}\n'.format(np.sum(LambdaForce) * input.au2eV))
@@ -287,6 +300,11 @@ def HRCalculate():
             fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
                             QDisp[i], HRDisp[i], LambdaDisp[i] / (2 * np.pi * input.c * input.au2fs)))
         fout.close()
+        
+        results['lambda10'] = float(Lambda10)
+        results['lambda01'] = float(Lambda01)
+        results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
+        results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
         fout = open('lambda.dat', 'w')
         fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV/eV\n')
         fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
@@ -296,3 +314,7 @@ def HRCalculate():
     else:
         print('no property is calculated')
         exit()
+    
+    fout = open('result.yml', 'wt')
+    yaml.dump(results, fout)
+    fout.close()

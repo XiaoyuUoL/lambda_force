@@ -32,7 +32,7 @@ def QCinput(task):
         if (task == 'S0opt'):
             g16.g16para['name'],g16.g16para['coord'] = FromSmiles(input.SystemSmiles)
         elif (task in ['S0freq', 'S1force', 'S1opt']):
-            g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('{}/S0opt'.format(input.FilePath), 'coord')
+            g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('S0opt', 'coord')
             g16.g16para['coord'] *= input.au2Angstrom
         else:
             print('error: task is not valid for prepare.QCinput')
@@ -44,7 +44,7 @@ def QCinput(task):
         if (task == 'S0opt'):
             orca.orcapara['name'],orca.orcapara['coord'] = FromSmiles(input.SystemSmiles)
         elif (task in ['S0freq', 'S1force', 'S1opt']):
-            orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('{}/S0opt'.format(input.FilePath), 'coord')
+            orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('S0opt', 'coord')
             orca.orcapara['coord'] *= input.au2Angstrom
         else:
             print('error: task is not valid for QCinput')
@@ -58,9 +58,9 @@ def QCinput(task):
 # check if there is no imaginary frequency (ensure the correction of S0opt task)
 def CheckFreq():
     if (input.QCFlag.lower() == 'g16'):
-        AtomMass, ModeFreq, ModeQ, ModeVect = g16.FchkRead('{}/S0freq'.format(input.FilePath), 'vibration')
+        AtomMass, ModeFreq, ModeQ, ModeVect = g16.FchkRead('S0freq', 'vibration')
     elif (input.QCFlag.lower() == 'orca'):
-        AtomMass, ModeFreq, ModeQ, ModeVect = orca.LogRead('{}/S0freq'.format(input.FilePath), 'vibration')
+        AtomMass, ModeFreq, ModeQ, ModeVect = orca.LogRead('S0freq', 'vibration')
     else:
         print('"QCFlag" now has only two options: g16 or orca')
         exit()
@@ -82,14 +82,14 @@ def CheckFreq():
         task = 'S0opt'
         if (input.QCFlag.lower() == 'g16'):
             g16.InitPara(task)
-            g16.g16para['name'],g16.g16para['coord'] = g16.FchkRead('{}/S0freq'.format(input.FilePath), 'coord')
+            g16.g16para['name'],g16.g16para['coord'] = g16.FchkRead('S0freq', 'coord')
             g16.g16para['coord'] *= input.au2Angstrom
             g16.g16para['coord'] += disp
             g16.GjfGen(g16.g16para)
 
         else:
             orca.InitPara(task)
-            orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('{}/S0freq'.format(input.FilePath), 'coord')
+            orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('S0freq', 'coord')
             orca.orcapara['coord'] *= input.au2Angstrom
             orca.orcapara['coord'] += disp
             orca.InpGen(orca.orcapara)

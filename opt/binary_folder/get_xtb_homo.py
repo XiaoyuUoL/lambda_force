@@ -2,6 +2,9 @@
 import yaml
 import subprocess
 import shlex
+import os
+
+os.system('pwd')
 
 with open("molecule.yml",'rt') as infile:
     moldict = yaml.safe_load(infile)

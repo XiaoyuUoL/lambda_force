@@ -1,4 +1,4 @@
 {
-  id: "test_id",
-  smiles: "c1ccccc1"
+  id: "tetracene",
+  smiles: "C1=CC2=CC3=CC4=CC=CC=C4C=C3C=C2C=C1"
 }
