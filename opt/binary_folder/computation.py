@@ -206,7 +206,6 @@ def Lambda4pCal():
     R = WilsonMatrix(FinalCoord, Zindices, AtomMass, ModeVect.T)
     ModeQ0 = np.matmul(R, ZCoordDiff(FinalCoord, InitCoord, Zindices)) * ModeQ
 
-    print(ES0S0, ES1S0, ES0S1, ES1S1)
     return ES0S1 - ES0S0, ES1S0 - ES1S1, ModeFreq, ModeQ0
     
 # calculate HR via force/gradient
@@ -248,7 +247,7 @@ def HRCalculate():
         LambdaForce = Freq * HRForce
 
         Freq /= (2 * np.pi * input.c * input.au2fs)
-        fout = open('HRfactor.dat', 'w')
+        fout = open('../result_folder/HRfactor.dat', 'w')
         fout.writelines(' freq/cm^-1       Qd            HRd      lambdad/cm^-1      Qf            HRf      lambdaf/cm^-1\n')
         for i in np.arange(len(Freq)):
             fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
@@ -261,11 +260,11 @@ def HRCalculate():
         results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
         results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
         results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
-        fout = open('lambda.dat', 'w')
-        fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV  lambdaForce/eV\n')
-        fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
-                        np.sum(LambdaDisp) * input.au2eV, np.sum(LambdaForce) * input.au2eV))
-        fout.close()
+        #fout = open('lambda.dat', 'w')
+        #fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV  lambdaForce/eV\n')
+        #fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
+        #                np.sum(LambdaDisp) * input.au2eV, np.sum(LambdaForce) * input.au2eV))
+        #fout.close()
     
     elif ('force' in input.Properties):
         Freq,QForce = LambdaForceCal()
@@ -273,7 +272,7 @@ def HRCalculate():
         LambdaForce = Freq * HRForce
 
         Freq /= (2 * np.pi * input.c * input.au2fs)
-        fout = open('HRfactor.dat', 'w')
+        fout = open('../result_folder/HRfactor.dat', 'w')
         fout.writelines(' freq/cm^-1      Qf            HRf      lambdaf/cm^-1\n')
         for i in np.arange(len(Freq)):
             fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
@@ -281,10 +280,10 @@ def HRCalculate():
         fout.close()
         
         results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
-        fout = open('lambda.dat', 'w')
-        fout.writelines(' lambdaForce/eV\n')
-        fout.writelines('{:14.7f}\n'.format(np.sum(LambdaForce) * input.au2eV))
-        fout.close()
+        #fout = open('lambda.dat', 'w')
+        #fout.writelines(' lambdaForce/eV\n')
+        #fout.writelines('{:14.7f}\n'.format(np.sum(LambdaForce) * input.au2eV))
+        #fout.close()
     
     elif ('4p' in input.Properties):
         Lambda10,Lambda01,Freq,QDisp = Lambda4pCal()
@@ -294,7 +293,7 @@ def HRCalculate():
         LambdaDisp = Freq * HRDisp
 
         Freq /= (2 * np.pi * input.c * input.au2fs)
-        fout = open('HRfactor.dat', 'w')
+        fout = open('../result_folder/HRfactor.dat', 'w')
         fout.writelines(' freq/cm^-1       Qd            HRd      lambdad/cm^-1\n')
         for i in np.arange(len(Freq)):
             fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
@@ -305,16 +304,21 @@ def HRCalculate():
         results['lambda01'] = float(Lambda01)
         results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
         results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
-        fout = open('lambda.dat', 'w')
-        fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV/eV\n')
-        fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
-                        np.sum(LambdaDisp) * input.au2eV))
-        fout.close()
+        #fout = open('lambda.dat', 'w')
+        #fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV/eV\n')
+        #fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
+        #                np.sum(LambdaDisp) * input.au2eV))
+        #fout.close()
     
     else:
         print('no property is calculated')
         exit()
     
-    fout = open('result.yml', 'wt')
+    if (input.QCFlag.lower() == 'g16'):
+        os.system('cp *.fchk ../result_folder/')
+    elif (input.QCFlag.lower() == 'orca'):
+        os.system('cp *.log ../result_folder/')
+
+    fout = open('../result_folder/result.yml', 'wt')
     yaml.dump(results, fout)
     fout.close()
