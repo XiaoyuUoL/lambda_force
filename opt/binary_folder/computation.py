@@ -260,11 +260,6 @@ def HRCalculate():
         results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
         results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
         results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
-        #fout = open('lambda.dat', 'w')
-        #fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV  lambdaForce/eV\n')
-        #fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
-        #                np.sum(LambdaDisp) * input.au2eV, np.sum(LambdaForce) * input.au2eV))
-        #fout.close()
     
     elif ('force' in input.Properties):
         Freq,QForce = LambdaForceCal()
@@ -280,10 +275,6 @@ def HRCalculate():
         fout.close()
         
         results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
-        #fout = open('lambda.dat', 'w')
-        #fout.writelines(' lambdaForce/eV\n')
-        #fout.writelines('{:14.7f}\n'.format(np.sum(LambdaForce) * input.au2eV))
-        #fout.close()
     
     elif ('4p' in input.Properties):
         Lambda10,Lambda01,Freq,QDisp = Lambda4pCal()
@@ -304,11 +295,6 @@ def HRCalculate():
         results['lambda01'] = float(Lambda01)
         results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
         results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
-        #fout = open('lambda.dat', 'w')
-        #fout.writelines('    lambda10/eV   lambda01/eV   lambda4p/eV  lambdaDisp/eV/eV\n')
-        #fout.writelines('{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Lambda10, Lambda01, (Lambda01 + Lambda10) * 0.5,
-        #                np.sum(LambdaDisp) * input.au2eV))
-        #fout.close()
     
     else:
         print('no property is calculated')

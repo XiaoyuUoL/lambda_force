@@ -5,7 +5,7 @@ provides:
 specifications:
   MMFF: mmff94
   Software: orca
-  ProcNumber: 8
+  ProcNumber: 4
   Memory: 10000
   Functional: b3lyp
   BasisSet: 3-21g
