@@ -4,9 +4,9 @@ provides:
 - 4p
 specifications:
   MMFF: mmff94
-  Software: g16
-  ProcNumber: 4
+  Software: orca
+  ProcNumber: 8
   Memory: 10000
   Functional: b3lyp
-  BasisSet: def2TZVP
+  BasisSet: 3-21g
   ImagFreq: 0.

@@ -314,10 +314,12 @@ def HRCalculate():
         print('no property is calculated')
         exit()
     
-    if (input.QCFlag.lower() == 'g16'):
-        os.system('cp *.fchk ../result_folder/')
-    elif (input.QCFlag.lower() == 'orca'):
-        os.system('cp *.log ../result_folder/')
+    os.system('mv S0opt* ../result_folder/')
+    os.system('mv S0freq* ../result_folder/')
+    if ('force' in input.Properties):
+        os.system('mv S1force* ../result_folder/')
+    if ('4p' in input.Properties):
+        os.system('mv S1opt* ../result_folder/')
 
     fout = open('../result_folder/result.yml', 'wt')
     yaml.dump(results, fout)
