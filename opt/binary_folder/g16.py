@@ -18,6 +18,7 @@ g16para = {
 # common keywords for different calculation task
 # can be changed (e.g., 'opt=loose' for Loose optimization)
 keywords = {
+    'S0sp': [input.Functional, input.BasisSet],
     'S0opt': [input.Functional, input.BasisSet, 'opt=loose'],
     'S0freq': [input.Functional, input.BasisSet, 'freq'],
     'S1force': [input.Functional, input.BasisSet, 'force', 'td(nstates=5,root=1)'],
@@ -58,6 +59,8 @@ def GjfGen(para):
 # 'gradient': return energy gradient
 # 'vibration': return normal mode information
 # 'zindices': return indice of zmatrix
+# 'basis': return number of basis functions
+# 'orbital': return AO/MO information
 def FchkRead(fchkfile, keyword):
     fin = open('{}.fchk'.format(fchkfile), 'r')
     
@@ -258,7 +261,75 @@ def FchkRead(fchkfile, keyword):
 
         print('guassian: No internal coordinate information in {}.fchk'.format(fchkfile))
         exit()
+    
+    # return number of basis functions
+    elif (keyword.lower() == 'basis'):
+        line = fin.readline()
+        while (len(line) != 0):
+            words = line.rstrip().split()
+            if(len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'basis' and words[3] == 'functions'):
+                return int(words[-1])
+            line = fin.readline()
+        fin.close()
 
+        print('guassian: No basis functions number information in {}.fchk'.format(fchkfile))
+        exit()
+
+    # return orbital information (AO, MO)
+    elif (keyword.lower() == 'orbital'):
+        def GetBasisFunc(elements):
+            BasisFunc = []
+            for element in elements:
+                BasisFunc.append(input.BasisFunc[element])
+            
+            return np.array(BasisFunc)
+
+        # calculate the power of symmetry matrix
+        def MatrixPower(M, x):
+            e,v = np.linalg.eigh(M)
+            return np.matmul(v, np.matmul(np.diag(np.power(e, x)), v.T))
+
+        IfGetON = False
+        OccNumber = 0
+        IfGetAN = False
+        Elements = []
+        BasisNumber = 0
+        IfGetMO = False
+        MOCoeff = []
+        line = fin.readline()
+        while (len(line) != 0):
+            words = line.rstrip().split()
+            if(len(words) > 2 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'alpha' and words[3] == 'electrons'):
+                IfGetON = True
+                OccNumber = int(words[-1])
+            elif(len(words) > 2 and words[0] == 'Atomic' and words[1] == 'numbers'):
+                IfGetAN = True
+                AtomNumber = int(words[-1])
+                for i in range(int((AtomNumber - 1) / 6) + 1):
+                    Elements += fin.readline().rstrip().split()
+                BasisNumber = np.sum(GetBasisFunc(Elements))
+                #print(BasisNumber)
+            #elif(len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'basis' and words[3] == 'functions'):
+            #    print(int(words[-1]))
+            elif(len(words) > 5 and words[0] == 'Alpha' and words[1] == 'MO' and words[2] == 'coefficients' and IfGetON and IfGetAN):
+                IfGetMO = True
+                for i in np.arange(int((BasisNumber * BasisNumber - 1) / 5) + 1):
+                    MOCoeff += fin.readline().rstrip().split()
+            line = fin.readline()
+        fin.close()
+
+        if (not IfGetMO):
+            print('guassian: No orbital information in {}.fchk'.format(fchkfile))
+            exit()
+        
+        MOCoeff = np.reshape(np.array(MOCoeff, dtype=float), (BasisNumber, BasisNumber)).T
+        AOoverlap = MatrixPower(np.matmul(MOCoeff, MOCoeff.T), -1.0)
+
+        BasisFunc = GetBasisFunc(Elements)
+        indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]), list(np.cumsum(BasisFunc))]).T # indices of basis function for each atom
+        
+        return indices, AOoverlap, MOCoeff[:, :OccNumber], MOCoeff[:, OccNumber:]
+        
     else:
         print('options are needed')
         exit()

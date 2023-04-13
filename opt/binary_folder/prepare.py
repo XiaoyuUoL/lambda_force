@@ -23,17 +23,25 @@ def FromSmiles(smiles):
         name.append(atom.atomicnum)
         coord.append(list(atom.coords))
     
-    return name,coord
+    return name,coord,mol.charge,mol.spin
 
 ## prepare inputs of QC calculation
-def QCinput(task):
+# name is for S0sp calculation of single atom
+def QCinput(task, name=None):
     if (input.QCFlag.lower() == 'g16'):
         g16.InitPara(task)
         if (task == 'S0opt'):
-            g16.g16para['name'],g16.g16para['coord'] = FromSmiles(input.SystemSmiles)
+            g16.g16para['name'],g16.g16para['coord'],g16.g16para['charge'],g16.g16para['multi'] = FromSmiles(input.SystemSmiles)
         elif (task in ['S0freq', 'S1force', 'S1opt']):
             g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('S0opt', 'coord')
             g16.g16para['coord'] *= input.au2Angstrom
+        elif (task == 'S0sp' and name != None):
+            g16.g16para['name'] = [name]
+            g16.g16para['coord'] = [[0.0, 0.0, 0.0]]
+            if (name % 2):
+                g16.g16para['multi'] = 2
+            else:
+                g16.g16para['multi'] = 1
         else:
             print('error: task is not valid for prepare.QCinput')
             exit()
@@ -42,10 +50,20 @@ def QCinput(task):
     elif (input.QCFlag.lower() == 'orca'):
         orca.InitPara(task)
         if (task == 'S0opt'):
-            orca.orcapara['name'],orca.orcapara['coord'] = FromSmiles(input.SystemSmiles)
+            orca.orcapara['name'],orca.orcapara['coord'],orca.orcapara['charge'],orca.orcapara['multi'] = FromSmiles(input.SystemSmiles)
+            if ('BOD' in input.Properties):
+                orcapara['keywords'].append('printMOs')
         elif (task in ['S0freq', 'S1force', 'S1opt']):
             orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('S0opt', 'coord')
             orca.orcapara['coord'] *= input.au2Angstrom
+        elif (task == 'S0sp' and name != None):
+            orca.orcapara['name'] = [name]
+            orca.orcapara['coord'] = [[0.0, 0.0, 0.0]]
+            print(name, name % 2)
+            if (name % 2):
+                orca.orcapara['multi'] = 2
+            else:
+                orca.orcapara['multi'] = 1
         else:
             print('error: task is not valid for QCinput')
             exit()

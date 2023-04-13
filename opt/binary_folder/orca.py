@@ -18,6 +18,7 @@ orcapara = {
 # common keywords/module/options for different calculation task
 # can be changed
 keywords = {
+    'S0sp': [input.Functional, input.BasisSet, 'tightSCF'],
     'S0opt': [input.Functional, input.BasisSet, 'opt', 'tightSCF'],
     'S0freq': [input.Functional, input.BasisSet, 'AnFreq', 'tightSCF'],
     'S1force': [input.Functional, input.BasisSet, 'engrad', 'tightSCF'],
@@ -25,6 +26,7 @@ keywords = {
 }
 
 modules = {
+    'S0sp': '',
     'S0opt': '',
     'S0freq': '',
     'S1force': 'tddft',
@@ -32,6 +34,7 @@ modules = {
 }
 
 options = {
+    'S0sp': {},
     'S0opt': {},
     'S0freq': {},
     'S1force': {
@@ -84,6 +87,8 @@ def InpGen(para):
 # 'gradient': return energy gradient
 # 'vibration': return normal mode information
 # 'zindices': return indice of zmatrix
+# 'basis': return number of basis functions
+# 'orbital': return AO/MO information
 def LogRead(logfile, keyword):
     fin = open('{}.log'.format(logfile), 'r')
     
@@ -128,7 +133,7 @@ def LogRead(logfile, keyword):
         if (len(e) != 0):
             return e   # unit: Hartree
 
-        print('orca: No ground state energy information in {}.log'.format(logfile))
+        print('orca: No excited state energy information in {}.log'.format(logfile))
         exit()
 
     # 'coord': return atom name and atom coordinate
@@ -294,6 +299,84 @@ def LogRead(logfile, keyword):
 
         print('orca: No internal coordinate information in {}.log'.format(logfile))
         exit()
+
+    # return number of basis functions
+    elif (keyword.lower() == 'basis'):
+        line = fin.readline()
+        while (len(line) != 0):
+            words = line.rstrip().split()
+            if(len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'basis' and words[3] == 'functions'):
+                return int(words[-1])
+            line = fin.readline()
+        fin.close()
+
+        print('orca: No basis functions number information in {}.log'.format(logfile))
+        exit()
+
+    # return orbital information (AO, MO)
+    elif (keyword.lower() == 'orbital'):
+        def GetBasisFunc(elements):
+            BasisFunc = []
+            for element in elements:
+                BasisFunc.append(input.BasisFunc[element])
+            
+            return np.array(BasisFunc)
+
+        # calculate the power of symmetry matrix
+        def MatrixPower(M, x):
+            e,v = np.linalg.eigh(M)
+            return np.matmul(v, np.matmul(np.diag(np.power(e, x)), v.T))
+
+        IfGetON = False
+        OccNumber = 0
+        IfGetEle = False
+        Elements = []
+        BasisFunc = []
+        BasisNumber = 0
+        IfGetMO = False
+        MOCoeff = []
+        line = fin.readline()
+        while (len(line) != 0):
+            words = line.rstrip().split()
+            if(len(words) > 2 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'Electrons' and not IfGetON):
+                IfGetON = True
+                OccNumber = int(words[-1]) // 2
+            elif(len(words) > 2 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and word[2] == '(A.U.)' and not IfGetEle):
+                IfGetEle = True
+                fin.readline()
+                fin.readline()
+                line = fin.readline()
+                while (line != '\n'):
+                    data = line.rstrip().split()
+                    Elements += str(int(float(data[2])))
+                    line = fin.readline()
+                print(Elements)
+                BasisFunc = GetBasisFunc(Elements)
+                BasisNumber = np.sum(BasisFunc)
+            elif(len(words) == 2 and words[0] == 'MOLECULAR' and words[1] == 'ORBITALS'):
+                IfGetMO = True
+                MOCoeff = np.zeros((BasisNumber, BasisNumber), dtype=float)
+                fin.readline()
+                for i in np.arange((BasisNumber - 1)//6 + 1):
+                    index = np.array(fin.readline().rstrip().split(), dtype=int)
+                    fin.readline()
+                    fin.readline()
+                    fin.readline()
+                    for j in np.arange(BasisNumber):
+                        MOCoeff[j, index] = np.array(fin.readline().rstrip().split()[2:], dtype=float)
+            line = fin.readline()
+        fin.close()
+
+        if (not IfGetMO):
+            print('orca: No orbital information in {}.log'.format(logfile))
+            exit()
+        
+        AOoverlap = MatrixPower(np.matmul(MOCoeff, MOCoeff.T), -1.0)
+
+        indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]), list(np.cumsum(BasisFunc))]).T # indices of basis function for each atom
+        
+        return indices, AOoverlap, MOCoeff[:, :OccNumber], MOCoeff[:, OccNumber:]
+        
 
     else:
         print('options are needed')

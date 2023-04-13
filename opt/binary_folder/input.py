@@ -38,6 +38,9 @@ BasisSet = CalDict['specifications']['BasisSet']
 #print('Functional:', Functional)
 #print('BasisSet:', BasisSet)
 
+# basis function of elements for different basis set
+BasisFunc = {}
+
 # dushin parameters
 dq = 1e-5                                                # dq for numerical Wilson Matrix
 de = 1e-5                                                # threshold for discarding eigenvectors of GMatrix

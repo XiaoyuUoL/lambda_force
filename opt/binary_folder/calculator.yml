@@ -2,11 +2,12 @@ calculator_id: lambda_force
 provides:
 - force
 - 4p
+- BOD
 specifications:
   MMFF: mmff94
   Software: orca
   ProcNumber: 4
   Memory: 10000
   Functional: b3lyp
-  BasisSet: 3-21g
+  BasisSet: def2-TZVP
   ImagFreq: 0.

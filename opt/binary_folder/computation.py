@@ -7,15 +7,25 @@ import g16
 import orca
 import prepare
 
+def RunQC(task):
+    if (input.QCFlag.lower() == 'g16'):
+        os.system('g16 {}.gjf'.format(task))
+        os.system('formchk {}.chk > /dev/null'.format(task))
+    elif (input.QCFlag.lower() == 'orca'):
+        os.system('$ORCA/orca {}.inp > {}.log'.format(task, task))
+    else:
+        print('"QCFlag" now has only two options: g16 or orca')
+        exit()
+
 # prepare QC input and run QC calculation
 def QCCalculate(task):
     if (task in ['S0opt', 'S0freq', 'S1force', 'S1opt']):
         prepare.QCinput(task)
-        os.system('./{}_{}.sh'.format(input.QCFlag.lower(), task))     #### check the command of G16/ORCA
+        RunQC(task)
     elif (task == 'CheckFreq'):
         result = prepare.CheckFreq()
         if (result == -1):
-            os.system('./{}_{}.sh'.format(input.QCFlag.lower(), 'S0opt'))     #### check the command of G16/ORCA
+            RunQC(task)
         return result
     else:
         print('error: task is not valid for computation.QCcalculate')
@@ -307,6 +317,78 @@ def HRCalculate():
     if ('4p' in input.Properties):
         os.system('mv S1opt* ../result_folder/')
 
+def BODCalculation():
+    # Bond order
+    # [Mayer, I., Chem. Phys. Lett., 1983, 97, 270.] for close shell
+    # [Mayer, I. Int. J. Quantum Chem., 1986, XXIX, 73.] for open shell 
+    def BondOrder(indices, S, Ca, Cb):
+        Pa = np.matmul(Ca, Ca.T)  # density matrix of alpha electron
+        Pb = np.matmul(Cb, Cb.T)  # density matrix of beta electron
+        PSa = np.matmul(Pa, S)
+        PSb = np.matmul(Pb, S)
+        B = np.zeros((len(indices), len(indices)), dtype=float)
+        for i,indexa in enumerate(indices):
+            for j,indexb in enumerate(indices):
+                PSai = PSa[indexa[0]:indexa[1], indexb[0]:indexb[1]]
+                PSaj = PSa[indexb[0]:indexb[1], indexa[0]:indexa[1]]
+                PSbi = PSb[indexa[0]:indexa[1], indexb[0]:indexb[1]]
+                PSbj = PSb[indexb[0]:indexb[1], indexa[0]:indexa[1]]
+                B[i, j] = 2. * np.trace(np.matmul(PSai, PSaj) + np.matmul(PSbi, PSbj))
+    
+        return B
+
+    names,coords,charge,spin = prepare.FromSmiles(input.SystemSmiles)
+    for name in names:
+        if (str(name) not in input.BasisFunc.keys()):
+            prepare.QCinput('S0sp', name)
+            RunQC('S0sp')
+            if (input.QCFlag.lower() == 'g16'):
+                input.BasisFunc[str(name)] = g16.FchkRead('S0sp', 'basis')
+            elif (input.QCFlag.lower() == 'orca'):
+                input.BasisFunc[str(name)] = orca.LogRead('S0sp', 'basis')
+            else:
+                print('"QCFlag" now has only two options: g16 or orca')
+                exit()
+            os.system('rm S0sp*')
+
+    if (input.QCFlag.lower() == 'g16'):
+        AOIndices,S,COcc,CUnocc = g16.FchkRead('S0opt', 'orbital')
+        Zindices = g16.FchkRead('S0opt', 'zindices')
+    elif (input.QCFlag.lower() == 'orca'):
+        AOIndices,S,COcc,CUnocc = orca.LogRead('S0opt', 'orbital')
+        Zindices = orca.LogRead('S0opt', 'zindices')
+    else:
+        print('"QCFlag" now has only two options: g16 or orca')
+        exit()
+
+    # calculate bond order for S0 and S1 (assume HOMO->LUMO excitation)
+    CS0a = np.zeros_like(COcc)
+    CS0a[:, :] = COcc
+    CS0b = np.zeros_like(COcc)
+    CS0b[:, :] = COcc
+    BOS0 = BondOrder(AOIndices, S, CS0a, CS0b)
+    CS1a = np.zeros((np.shape(COcc)[0], np.shape(COcc)[1] + 1), dtype=float)
+    CS1a[:, :-1] = COcc
+    CS1a[:, -2] *= np.sqrt(0.5)
+    CS1a[:, -1] = np.sqrt(0.5) * CUnocc[:, 0]
+    CS1b = np.zeros_like(CS1a)
+    CS1b[:, :] = CS1a
+    BOS1 = BondOrder(AOIndices, S, CS1a, CS1b)
+
+    BODT = 0.0
+    fout.open('../result_folder/bod.dat', 'wt')
+    for index in Zindices:
+        if(index[2] == -1):
+            a = index[0]
+            b = index[1]
+            BOD = BOS1[a, b] - BOS0[a, b]
+            fout.writelines('{:5d}{:5d}{:8.3f}'.format(a, b, BOD))
+            BODT += BOD * BOD
+    fout.close()
+
+    results['BOD'] = BODT
+
+def WriteOutput():
     fout = open('../result_folder/result.yml', 'wt')
     yaml.dump(results, fout)
     fout.close()

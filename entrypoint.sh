@@ -5,6 +5,9 @@
 
 # Make sure that after this script finishes a result.yml exists.
 # The workdir_bundle.tar.gz will also be staged out for debugging purposes, if you create it.
+cd /opt/software_folder
+source g16.sh
+source orce.sh
 cd /opt/binary_folder
 python main.py
 
