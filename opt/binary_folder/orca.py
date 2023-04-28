@@ -1,8 +1,8 @@
-# input/output of orca
-import input
 import numpy as np
 
-orcapara = {
+import input
+
+para = {
     'file': '',
     'procnumber': input.ProcNumber,
     'keywords': [],
@@ -22,7 +22,9 @@ keywords = {
     'S0opt': [input.Functional, input.BasisSet, 'opt', 'tightSCF'],
     'S0freq': [input.Functional, input.BasisSet, 'AnFreq', 'tightSCF'],
     'S1force': [input.Functional, input.BasisSet, 'engrad', 'tightSCF'],
-    'S1opt': [input.Functional, input.BasisSet, 'opt', 'tightSCF']
+    'S1opt': [input.Functional, input.BasisSet, 'opt', 'tightSCF'],
+    'S1nac': [input.Functional, input.BasisSet, 'tightSCF'],
+    'soc': [input.Functional, input.BasisSet, 'tightSCF']
 }
 
 modules = {
@@ -30,7 +32,9 @@ modules = {
     'S0opt': '',
     'S0freq': '',
     'S1force': 'tddft',
-    'S1opt': 'tddft'
+    'S1opt': 'tddft',
+    'S1nac': 'tddft',
+    'soc': 'tddft'
 }
 
 options = {
@@ -48,15 +52,28 @@ options = {
         'nroots': '5',
         'iroot': '1',
         'printlevel': '4'
+    },
+    'S1nac': {
+        'tda': 'false',
+        'nroots': '5',
+        'iroot': '1',
+        'nacme': 'true',
+        'printlevel': '4'
+    },
+    'soc': {
+        'tda': 'false',
+        'nroots': '5',
+        'dosoc': 'true',
+        'printlevel': '4'
     }
 }
 
 def InitPara(task):
-    orcapara['desc'] = task
-    orcapara['keywords'] = keywords[task]
-    orcapara['module'] = modules[task]
-    orcapara['option'] = options[task]
-    orcapara['file'] = task
+    para['desc'] = task
+    para['keywords'] = keywords[task]
+    para['module'] = modules[task]
+    para['option'] = options[task]
+    para['file'] = task
 
 # generate input file for orca calculation
 def InpGen(para):
@@ -79,23 +96,24 @@ def InpGen(para):
     fout.writelines('*\n')
     fout.close()
 
-# read information from orca log files
-# keyword options:
-# 'energy-gd': return energy of ground state
-# 'energy-ex': return energy of excited states
+## read log file. keyword options:
+# 'energy-gd': return energy of electronic ground state
+# 'energy-ex': return energies of electronic excited state
 # 'coord': return atom name and atom coordinate
 # 'gradient': return energy gradient
 # 'vibration': return normal mode information
 # 'zindices': return indice of zmatrix
 # 'basis': return number of basis functions
 # 'orbital': return AO/MO information
+# 'nac': return nonadiabatic coupling between S0 and S1
+# 'soc': return spin-orbit couplings among singlet and triplet
 def LogRead(logfile, keyword):
     fin = open('{}.log'.format(logfile), 'r')
-    
+
     # 'energy': return energy of electronic ground state
     if (keyword.lower() == 'energy-gd'):
         line = fin.readline()
-        e = 0.0
+        e = None
         while (len(line) != 0):
             words = line.rstrip().split()
             # read ground state energy
@@ -104,24 +122,23 @@ def LogRead(logfile, keyword):
             line = fin.readline()
         fin.close()
 
-        if (e != 0.0):
+        if (e != None):
             return e  # unit: Hartree
-        
-        print('orca: No ground state energy information in {}.log'.format(logfile))
+
+        print('error of orca.LogRead(): No ground state energy information in {}.log'.format(logfile))
         exit()
 
     # 'energy': return energies of electronic excited state
     if (keyword.lower() == 'energy-ex'):
+        e = []
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            # read excited state energy
+            # read excited state energies
             if (len(words) > 2 and words[0] == 'TD-DFT' and words[1] == 'EXCITED'):
-                e = []
                 line = fin.readline()
                 while (len(line) != 0):
                     words = line.rstrip().split()
-                    # read total energy
                     if (len(words) > 1 and words[0] == 'STATE'):
                         e.append(float(words[3]))
                     elif (len(words) > 1 and words[0] == 'TD-DFT-EXCITATION'):
@@ -133,7 +150,7 @@ def LogRead(logfile, keyword):
         if (len(e) != 0):
             return e   # unit: Hartree
 
-        print('orca: No excited state energy information in {}.log'.format(logfile))
+        print('error of orca.LogRead(): No excited state energy information in {}.log'.format(logfile))
         exit()
 
     # 'coord': return atom name and atom coordinate
@@ -158,10 +175,10 @@ def LogRead(logfile, keyword):
             line = fin.readline()
         fin.close()
 
-        if (len(Name) != 0):
+        if (len(Name) * len(Coord) != 0):
             return Name, np.array(Coord, dtype=float)
-        
-        print('orca: No coordinate information in {}.log'.format(logfile))
+
+        print('error of orca.LogRead(): No coordinate information in {}.log'.format(logfile))
         exit()
 
     # 'gradient': return energy gradient
@@ -184,7 +201,7 @@ def LogRead(logfile, keyword):
             line = fin.readline()
         fin.close()
         
-        print('orca: No gradient information in {}'.format(logfile))
+        print('error of orca.LogRead(): No gradient information in {}'.format(logfile))
         exit()
 
     # 'vibration': return normal mode information
@@ -245,7 +262,7 @@ def LogRead(logfile, keyword):
         fin.close()
 
         if (not IfGetMode):
-            print('orca: No vibration information in {}.log'.format(logfile))
+            print('error of orca.LogRead(): No normal mode information in {}.log'.format(logfile))
             exit()
 
         AtomMass = np.array(AtomMass, dtype=float) # unit: amu
@@ -267,7 +284,7 @@ def LogRead(logfile, keyword):
         for i,freq in enumerate(ModeFreq):
             if (ModeFreq[0] > 0.):
                 ModeQ[i] = np.sqrt(freq * (1. / input.au2aum) / input.hbar)
-        
+
         return AtomMass, ModeFreq, ModeQ, ModeVect
 
     # return redundant internal coordinates
@@ -297,7 +314,7 @@ def LogRead(logfile, keyword):
             line = fin.readline()
         fin.close()
 
-        print('orca: No internal coordinate information in {}.log'.format(logfile))
+        print('error of orca.LogRead(): No redundant internal coordinates information in {}.log'.format(logfile))
         exit()
 
     # return number of basis functions
@@ -310,10 +327,10 @@ def LogRead(logfile, keyword):
             line = fin.readline()
         fin.close()
 
-        print('orca: No basis functions number information in {}.log'.format(logfile))
+        print('error of orca.LogRead(): No basis functions number information in {}.log'.format(logfile))
         exit()
 
-    # return orbital information (AO, MO)
+    # return orbital information (AO, MO) ##### only close shell now
     elif (keyword.lower() == 'orbital'):
         def GetBasisFunc(elements):
             BasisFunc = []
@@ -328,11 +345,11 @@ def LogRead(logfile, keyword):
             return np.matmul(v, np.matmul(np.diag(np.power(e, x)), v.T))
 
         IfGetON = False
-        OccNumber = 0
+        OccNumber = None
         IfGetEle = False
         Elements = []
         BasisFunc = []
-        BasisNumber = 0
+        BasisNumber = None
         IfGetMO = False
         MOCoeff = []
         line = fin.readline()
@@ -350,7 +367,6 @@ def LogRead(logfile, keyword):
                     data = line.rstrip().split()
                     Elements += str(int(float(data[2])))
                     line = fin.readline()
-                print(Elements)
                 BasisFunc = GetBasisFunc(Elements)
                 BasisNumber = np.sum(BasisFunc)
             elif(len(words) == 2 and words[0] == 'MOLECULAR' and words[1] == 'ORBITALS'):
@@ -368,16 +384,68 @@ def LogRead(logfile, keyword):
         fin.close()
 
         if (not IfGetMO):
-            print('orca: No orbital information in {}.log'.format(logfile))
+            print('error of orca.LogRead(): No orbital information in {}.log'.format(logfile))
             exit()
-        
+
         AOoverlap = MatrixPower(np.matmul(MOCoeff, MOCoeff.T), -1.0)
 
-        indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]), list(np.cumsum(BasisFunc))]).T # indices of basis function for each atom
-        
+        # indices of basis function for each atom
+        indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]), list(np.cumsum(BasisFunc))]).T
+
         return indices, AOoverlap, MOCoeff[:, :OccNumber], MOCoeff[:, OccNumber:]
+
+    # return nonadiabatic coupling between S0 and S1
+    elif (keyword.lower() == 'nac'):
+        NAC = []
+
+    # return spin-orbit couplings among singlet and triplet
+    elif (keyword.lower() == 'soc'):
+        RootNumber = None
+        IfGetRN = False
+        HSOC = []
+        IfGetHSR = False
+        IfGetHSI = False
+        line = fin.readline()
+        while (len(line) != 0):
+            words = line.rstrip().split()
+            # read number of roots
+            if(len(words) > 6 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'roots'):
+                IfGetRN = True
+                RootNumber = int(words[-1])
+                HSOC = np.zeros((RootNumber * 4 + 1, RootNumber * 4 + 1), dtype = complex)
+            # read real part of HSOC
+            elif(len(words) == 2 and words[0] == 'Real' and words[1] == 'part:' and IfGetRN):
+                IfGetHSR = True
+                for i in np.arange((RootNumber * 4) // 6 + 1):
+                    fin.readline()
+                    for j in np.arange(RootNumber * 4 + 1):
+                        line = fin.readline()
+                        data = np.array(line.rstrip().split(), dtype = float)
+                        HSOC[j, i * 6 : min(i * 6 + 6, RootNumber * 4 + 1)] = data[1:]
+            # read image part of HSOC
+            elif(len(words) == 2 and words[0] == 'Image' and words[1] == 'part:' and IfGetRN):
+                IfGetHSI = True
+                for i in np.arange((RootNumber * 4) // 6 + 1):
+                    fin.readline()
+                    for j in np.arange(RootNumber * 4 + 1):
+                        line = fin.readline()
+                        data = np.array(line.rstrip().split(), dtype = float)
+                        HSOC[j, i * 6 : min(i * 6 + 6, RootNumber * 4 + 1)] += data[1:] * complex(0.0, 1.0)
+            line = fin.readline()
+        fin.close()
+
+        if (not IfGetHSR or not IfGetHSI):
+            print('error of orca.LogRead(): No nonadiabatic coupling information in {}.log'.format(logfile))
+            exit()
         
+        SOC = []
+        for i in np.arange(RootNumber):
+            for j in np.arange(RootNumber):
+                # Sindex, Tindex, SOC(MS=0), SOC(MS=-1), SOC(MS=+1) (unit: Hartree)
+                SOC.append([i, j + 1, HSOC[j + RootNumber + 1, i], HSOC[j + RootNumber * 2 + 1, i], HSOC[j + RootNumber * 3 + 1, i]])
+        
+        return SOC
 
     else:
-        print('options are needed')
+        print('error of orca.LogRead(): option is needed')
         exit()

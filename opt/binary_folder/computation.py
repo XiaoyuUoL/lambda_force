@@ -7,28 +7,28 @@ import g16
 import orca
 import prepare
 
-def RunQC(task):
+def QCRun(task):
     if (input.QCFlag.lower() == 'g16'):
         os.system('g16 {}.gjf'.format(task))
         os.system('formchk {}.chk > /dev/null'.format(task))
     elif (input.QCFlag.lower() == 'orca'):
         os.system('$ORCA/orca {}.inp > {}.log'.format(task, task))
     else:
-        print('"QCFlag" now has only two options: g16 or orca')
+        print('"QCFlag" now has only two options, "g16" or "orca"')
         exit()
 
 # prepare QC input and run QC calculation
 def QCCalculate(task):
     if (task in ['S0opt', 'S0freq', 'S1force', 'S1opt']):
         prepare.QCinput(task)
-        RunQC(task)
+        QCRun(task)
     elif (task == 'CheckFreq'):
         result = prepare.CheckFreq()
         if (result == -1):
-            RunQC(task)
+            QCRun(task)
         return result
     else:
-        print('error: task is not valid for computation.QCcalculate')
+        print('error in computation.QCcalculate(): task is not valid')
         exit()
 
 # Diff of ZCoord (angle/dihedral with unit of length)
@@ -87,7 +87,7 @@ def ZCoordDiff(qCoord0, qCoord, zIndices):
     return zCoordDiff
 
 # transfer Cartesian coordinates to internal coordinates according to the 4-number ZIndices
-# using notation in JCP, 2001, 115, 9103
+# using notation in [JCP, 2001, 115, 9103.]
 # return R = cpp^T * Gp^-1/2 * a^T in equation (20)
 def WilsonMatrix(qCoord, zIndices, Mass, Mode):
     AtomNum = len(qCoord)
@@ -202,7 +202,7 @@ def Lambda4pCal():
         ES0S1 = orca.LogRead('S1opt', 'energy-gd')
         ES1S1 = orca.LogRead('S1opt', 'energy-ex')[0] + ES0S1
     else:
-        print('"QCFlag" now has only two options: g16 or orca')
+        print('"QCFlag" now has only two options, "g16" or "orca"')
         exit()
     
     # remove imaginary frequency modes
@@ -227,7 +227,7 @@ def LambdaForceCal():
         Gradient = orca.LogRead('S1force', 'gradient')
         AtomMass, ModeFreq, ModeQ, ModeVect = orca.LogRead('S0freq', 'vibration')
     else:
-        print('"QCFlag" now has only two options: g16 or orca')
+        print('"QCFlag" now has only two options, "g16" or "orca"')
         exit()
     
     # remove imaginary frequency modes
@@ -338,16 +338,20 @@ def BODCalculation():
         return B
 
     names,coords,charge,spin = prepare.FromSmiles(input.SystemSmiles)
+    if (spin != 0):
+        print('error in computation.BODCalculation(): now only valid for close shell system')
+        exit()
+
     for name in names:
         if (str(name) not in input.BasisFunc.keys()):
             prepare.QCinput('S0sp', name)
-            RunQC('S0sp')
+            QCRun('S0sp')
             if (input.QCFlag.lower() == 'g16'):
                 input.BasisFunc[str(name)] = g16.FchkRead('S0sp', 'basis')
             elif (input.QCFlag.lower() == 'orca'):
                 input.BasisFunc[str(name)] = orca.LogRead('S0sp', 'basis')
             else:
-                print('"QCFlag" now has only two options: g16 or orca')
+                print('"QCFlag" now has only two options, "g16" or "orca"')
                 exit()
             os.system('rm S0sp*')
 
@@ -358,7 +362,7 @@ def BODCalculation():
         AOIndices,S,COcc,CUnocc = orca.LogRead('S0opt', 'orbital')
         Zindices = orca.LogRead('S0opt', 'zindices')
     else:
-        print('"QCFlag" now has only two options: g16 or orca')
+        print('"QCFlag" now has only two options, "g16" or "orca"')
         exit()
 
     # calculate bond order for S0 and S1 (assume HOMO->LUMO excitation)

@@ -22,67 +22,66 @@ def FromSmiles(smiles):
     for atom in mol.atoms:
         name.append(atom.atomicnum)
         coord.append(list(atom.coords))
-    
-    return name,coord,mol.charge,mol.spin
+
+    return name, coord, mol.charge, mol.spin
 
 ## prepare inputs of QC calculation
-# name is for S0sp calculation of single atom
+# 'name' is for S0sp calculation of single atom
 def QCinput(task, name=None):
     if (input.QCFlag.lower() == 'g16'):
         g16.InitPara(task)
         if (task == 'S0opt'):
-            g16.g16para['name'],g16.g16para['coord'],g16.g16para['charge'],g16.g16para['multi'] = FromSmiles(input.SystemSmiles)
+            g16.para['name'],g16.para['coord'],g16.para['charge'],g16.para['multi'] = FromSmiles(input.SystemSmiles)
         elif (task in ['S0freq', 'S1force', 'S1opt']):
-            g16.g16para['name'], g16.g16para['coord'] = g16.FchkRead('S0opt', 'coord')
-            g16.g16para['coord'] *= input.au2Angstrom
+            g16.para['name'], g16.para['coord'] = g16.FchkRead('S0opt', 'coord')
+            g16.para['coord'] *= input.au2Angstrom
         elif (task == 'S0sp' and name != None):
-            g16.g16para['name'] = [name]
-            g16.g16para['coord'] = [[0.0, 0.0, 0.0]]
+            g16.para['name'] = [name]
+            g16.para['coord'] = [[0.0, 0.0, 0.0]]
             if (name % 2):
-                g16.g16para['multi'] = 2
+                g16.para['multi'] = 2
             else:
-                g16.g16para['multi'] = 1
+                g16.para['multi'] = 1
         else:
-            print('error: task is not valid for prepare.QCinput')
+            print('error of prepare.QCinput(): task "{}" is not valid'.format(task))
             exit()
-        g16.GjfGen(g16.g16para)
-    
+        g16.GjfGen(g16.para)
+
     elif (input.QCFlag.lower() == 'orca'):
         orca.InitPara(task)
         if (task == 'S0opt'):
-            orca.orcapara['name'],orca.orcapara['coord'],orca.orcapara['charge'],orca.orcapara['multi'] = FromSmiles(input.SystemSmiles)
+            orca.para['name'],orca.para['coord'],orca.para['charge'],orca.para['multi'] = FromSmiles(input.SystemSmiles)
             if ('BOD' in input.Properties):
-                orcapara['keywords'].append('printMOs')
+                orca.para['keywords'].append('printMOs')
         elif (task in ['S0freq', 'S1force', 'S1opt']):
-            orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('S0opt', 'coord')
-            orca.orcapara['coord'] *= input.au2Angstrom
+            orca.para['name'],orca.para['coord'] = orca.LogRead('S0opt', 'coord')
+            orca.para['coord'] *= input.au2Angstrom
         elif (task == 'S0sp' and name != None):
-            orca.orcapara['name'] = [name]
-            orca.orcapara['coord'] = [[0.0, 0.0, 0.0]]
-            print(name, name % 2)
-            if (name % 2):
-                orca.orcapara['multi'] = 2
+            orca.para['name'] = [name]
+            orca.para['coord'] = [[0.0, 0.0, 0.0]]
+            if (name%2):
+                orca.para['multi'] = 2
             else:
-                orca.orcapara['multi'] = 1
+                orca.para['multi'] = 1
         else:
-            print('error: task is not valid for QCinput')
+            print('error of prepare.QCinput(): task "{}" is not valid'.format(task))
             exit()
-        orca.InpGen(orca.orcapara)
-    
+        orca.InpGen(orca.para)
+
     else:
-        print('"QCFlag" now has only two options: g16 or orca')
+        print('error: "QCFlag" now has only two options, "g16" or "orca"')
         exit()
-    
+
 # check if there is no imaginary frequency (ensure the correction of S0opt task)
 def CheckFreq():
     if (input.QCFlag.lower() == 'g16'):
-        AtomMass, ModeFreq, ModeQ, ModeVect = g16.FchkRead('S0freq', 'vibration')
+        AtomMass,ModeFreq,ModeQ,ModeVect = g16.FchkRead('S0freq', 'vibration')
     elif (input.QCFlag.lower() == 'orca'):
-        AtomMass, ModeFreq, ModeQ, ModeVect = orca.LogRead('S0freq', 'vibration')
+        AtomMass,ModeFreq,ModeQ,ModeVect = orca.LogRead('S0freq', 'vibration')
     else:
-        print('"QCFlag" now has only two options: g16 or orca')
+        print('error: "QCFlag" now has only two options, "g16" or "orca"')
         exit()
-    
+
     # normal termination of S0opt
     if (ModeFreq[0] > input.ImagFreq):
         return 0
@@ -95,21 +94,21 @@ def CheckFreq():
                 vect /= np.sqrt(AtomMass)
                 vect /= np.sqrt(np.sum(vect * vect))
                 disp += np.reshape(vect, (-1, 3)) * np.random.rand()
-        disp /= np.sqrt(np.sum(disp * disp))    # |disp| = 0.5
+        disp /= 2. * np.sqrt(np.sum(disp * disp))    # |disp| = 0.5
 
         task = 'S0opt'
         if (input.QCFlag.lower() == 'g16'):
             g16.InitPara(task)
-            g16.g16para['name'],g16.g16para['coord'] = g16.FchkRead('S0freq', 'coord')
-            g16.g16para['coord'] *= input.au2Angstrom
-            g16.g16para['coord'] += disp
-            g16.GjfGen(g16.g16para)
+            g16.para['name'],g16.para['coord'] = g16.FchkRead('S0freq', 'coord')
+            g16.para['coord'] *= input.au2Angstrom
+            g16.para['coord'] += disp
+            g16.GjfGen(g16.para)
 
         else:
             orca.InitPara(task)
-            orca.orcapara['name'],orca.orcapara['coord'] = orca.LogRead('S0freq', 'coord')
-            orca.orcapara['coord'] *= input.au2Angstrom
-            orca.orcapara['coord'] += disp
-            orca.InpGen(orca.orcapara)
+            orca.para['name'],orca.para['coord'] = orca.LogRead('S0freq', 'coord')
+            orca.para['coord'] *= input.au2Angstrom
+            orca.para['coord'] += disp
+            orca.InpGen(orca.para)
 
         return -1

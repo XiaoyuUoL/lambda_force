@@ -3,6 +3,8 @@ provides:
 - force
 - 4p
 - BOD
+- SOC
+- NAC
 specifications:
   MMFF: mmff94
   Software: orca
