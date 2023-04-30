@@ -357,7 +357,7 @@ def FchkRead(fchkfile, keyword):
             print('error of g16.ReadFchk(): No nonadiabatic coupling information in {}.fchk'.format(fchkfile))
             exit()
         
-        NAC = np.array(NAC, dtype=float())  # unit: Hartree/Bohr (3N 1D-array)
+        NAC = np.array(NAC, dtype=float())  # unit: 1/Bohr (3N 1D-array)
         return NAC
 
     else:

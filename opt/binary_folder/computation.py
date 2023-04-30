@@ -19,7 +19,7 @@ def QCRun(task):
 
 # prepare QC input and run QC calculation
 def QCCalculate(task):
-    if (task in ['S0opt', 'S0freq', 'S1force', 'S1opt']):
+    if (task in ['S0opt', 'S0freq', 'S1force', 'S1opt', 'S1nac', 'soc']):
         prepare.QCinput(task)
         QCRun(task)
     elif (task == 'CheckFreq'):
@@ -86,102 +86,102 @@ def ZCoordDiff(qCoord0, qCoord, zIndices):
     
     return zCoordDiff
 
-# transfer Cartesian coordinates to internal coordinates according to the 4-number ZIndices
-# using notation in [JCP, 2001, 115, 9103.]
-# return R = cpp^T * Gp^-1/2 * a^T in equation (20)
-def WilsonMatrix(qCoord, zIndices, Mass, Mode):
-    AtomNum = len(qCoord)
-    zNum = len(zIndices)
-        
-    def WilsonBMatrix(qCoord, zIndices):
-        def Vector(coord1, coord2):
-            dq = coord2 - coord1
-            r = np.sqrt(np.sum(dq * dq))
-            return dq / r, r
-
-        def Angle(Coord):
-            v1 = Coord[0] - Coord[1]
-            l1 = np.sqrt(np.sum(v1 * v1))
-            v2 = Coord[2] - Coord[1]
-            l2 = np.sqrt(np.sum(v2 * v2))
-            cos = np.sum(v1 * v2) / (l1 * l2)
-            if (cos < -1.):
-                cos = -1.
-            elif (cos > 1.):
-                cos = 1.
-            return np.arccos(cos)
-
-        BMatrix = np.zeros((zNum, 3 * AtomNum), dtype=float)
-        ## numberial derivative Bij = partail zi / partial qj (dq = 0.1)
-        #if (mode == 'n'):
-        #    qCoordP = np.zeros_like(qCoord)
-        #    qCoordM = np.zeros_like(qCoord)
-        #    for i in np.arange(AtomNum):
-        #        for j in np.arange(3):
-        #            qCoordP[:] = qCoord[:]
-        #            qCoordP[i, j] += dq
-        #            qCoordM[:] = qCoord[:]
-        #            qCoordM[i, j] -= dq
-        #            BMatrix[:, i * 3 + j] = ZCoordDiff(qCoordP, qCoordM, zIndices) / (2.0 * dq)
-        #else:
-        # analytical results (Molecular Vibrations, E. Bright Wilson, etc.)
-        for i,zindex in enumerate(zIndices):
-            # length
-            if (zindex[2] == -1):
-                i1,i2 = zindex[0],zindex[1]
-                e12,r12 = Vector(qCoord[i2], qCoord[i1])
-                BMatrix[i, i1 * 3: i1 * 3 + 3] = -e12
-                BMatrix[i, i2 * 3: i2 * 3 + 3] = e12
-            # angle
-            elif (zindex[3] == -1):
-                i1,i2,i3 = zindex[0],zindex[1],zindex[2]
-                e21,r21 = Vector(qCoord[i1], qCoord[i2])
-                e23,r23 = Vector(qCoord[i3], qCoord[i2])
-                theta = Angle([qCoord[i1], qCoord[i2], qCoord[i3]])
-                cos = np.cos(theta)
-                sin = np.sin(theta)
-                s1 = (cos * e21 - e23) / (sin * r21)
-                s3 = (cos * e23 - e21) / (sin * r23)
-                BMatrix[i, i1 * 3: i1 * 3 + 3] = s1
-                BMatrix[i, i2 * 3: i2 * 3 + 3] = -s1 - s3
-                BMatrix[i, i3 * 3: i3 * 3 + 3] = s3
-            else:
-                i1,i2,i3,i4 = zindex[0],zindex[1],zindex[2],zindex[3]
-                e12,r12 = Vector(qCoord[i2], qCoord[i1])
-                e23,r23 = Vector(qCoord[i3], qCoord[i2])
-                e32,r32 = Vector(qCoord[i2], qCoord[i3])
-                e43,r43 = Vector(qCoord[i3], qCoord[i4])
-                theta2 = Angle([qCoord[i1], qCoord[i2], qCoord[i3]])
-                sin2 = np.sin(theta2)
-                cos2 = np.cos(theta2)
-                theta3 = Angle([qCoord[i2], qCoord[i3], qCoord[i4]])
-                sin3 = np.sin(theta3)
-                cos3 = np.cos(theta3)
-                s1 = -np.cross(e12, e23) / (r12 * sin2 * sin2)
-                s4 = -np.cross(e43, e32) / (r43 * sin3 * sin3)
-                BMatrix[i, i1 * 3: i1 * 3 + 3] = s1
-                BMatrix[i, i2 * 3: i2 * 3 + 3] = -s1 * (r23 - r12 * cos2) / r23 - s4 * r43 * cos3 / r23
-                BMatrix[i, i3 * 3: i3 * 3 + 3] = -s4 * (r32 - r43 * cos3) / r32 - s1 * r12 * cos2 / r32
-                BMatrix[i, i4 * 3: i4 * 3 + 3] = s4
-        
-        return BMatrix
+# calculate lambda/HR via 4p/displacement approaches
+def Lambda4p():
+    # transfer Cartesian coordinates to internal coordinates according to the 4-number ZIndices
+    # using notation in [JCP, 2001, 115, 9103.]
+    # return R = cpp^T * Gp^-1/2 * a^T in equation (20)
+    def WilsonMatrix(qCoord, zIndices, Mass, Mode):
+        AtomNum = len(qCoord)
+        zNum = len(zIndices)
+            
+        def WilsonBMatrix(qCoord, zIndices):
+            def Vector(coord1, coord2):
+                dq = coord2 - coord1
+                r = np.sqrt(np.sum(dq * dq))
+                return dq / r, r
     
-    BMatrix = WilsonBMatrix(qCoord, zIndices)
-    GMatrix = np.matmul(BMatrix, np.matmul(np.diag(1.0 / Mass), BMatrix.T))
+            def Angle(Coord):
+                v1 = Coord[0] - Coord[1]
+                l1 = np.sqrt(np.sum(v1 * v1))
+                v2 = Coord[2] - Coord[1]
+                l2 = np.sqrt(np.sum(v2 * v2))
+                cos = np.sum(v1 * v2) / (l1 * l2)
+                if (cos < -1.):
+                    cos = -1.
+                elif (cos > 1.):
+                    cos = 1.
+                return np.arccos(cos)
+    
+            BMatrix = np.zeros((zNum, 3 * AtomNum), dtype=float)
+            ## numberial derivative Bij = partail zi / partial qj (dq = 0.1)
+            #if (mode == 'n'):
+            #    qCoordP = np.zeros_like(qCoord)
+            #    qCoordM = np.zeros_like(qCoord)
+            #    for i in np.arange(AtomNum):
+            #        for j in np.arange(3):
+            #            qCoordP[:] = qCoord[:]
+            #            qCoordP[i, j] += dq
+            #            qCoordM[:] = qCoord[:]
+            #            qCoordM[i, j] -= dq
+            #            BMatrix[:, i * 3 + j] = ZCoordDiff(qCoordP, qCoordM, zIndices) / (2.0 * dq)
+            #else:
+            # analytical results (Molecular Vibrations, E. Bright Wilson, etc.)
+            for i,zindex in enumerate(zIndices):
+                # length
+                if (zindex[2] == -1):
+                    i1,i2 = zindex[0],zindex[1]
+                    e12,r12 = Vector(qCoord[i2], qCoord[i1])
+                    BMatrix[i, i1 * 3: i1 * 3 + 3] = -e12
+                    BMatrix[i, i2 * 3: i2 * 3 + 3] = e12
+                # angle
+                elif (zindex[3] == -1):
+                    i1,i2,i3 = zindex[0],zindex[1],zindex[2]
+                    e21,r21 = Vector(qCoord[i1], qCoord[i2])
+                    e23,r23 = Vector(qCoord[i3], qCoord[i2])
+                    theta = Angle([qCoord[i1], qCoord[i2], qCoord[i3]])
+                    cos = np.cos(theta)
+                    sin = np.sin(theta)
+                    s1 = (cos * e21 - e23) / (sin * r21)
+                    s3 = (cos * e23 - e21) / (sin * r23)
+                    BMatrix[i, i1 * 3: i1 * 3 + 3] = s1
+                    BMatrix[i, i2 * 3: i2 * 3 + 3] = -s1 - s3
+                    BMatrix[i, i3 * 3: i3 * 3 + 3] = s3
+                else:
+                    i1,i2,i3,i4 = zindex[0],zindex[1],zindex[2],zindex[3]
+                    e12,r12 = Vector(qCoord[i2], qCoord[i1])
+                    e23,r23 = Vector(qCoord[i3], qCoord[i2])
+                    e32,r32 = Vector(qCoord[i2], qCoord[i3])
+                    e43,r43 = Vector(qCoord[i3], qCoord[i4])
+                    theta2 = Angle([qCoord[i1], qCoord[i2], qCoord[i3]])
+                    sin2 = np.sin(theta2)
+                    cos2 = np.cos(theta2)
+                    theta3 = Angle([qCoord[i2], qCoord[i3], qCoord[i4]])
+                    sin3 = np.sin(theta3)
+                    cos3 = np.cos(theta3)
+                    s1 = -np.cross(e12, e23) / (r12 * sin2 * sin2)
+                    s4 = -np.cross(e43, e32) / (r43 * sin3 * sin3)
+                    BMatrix[i, i1 * 3: i1 * 3 + 3] = s1
+                    BMatrix[i, i2 * 3: i2 * 3 + 3] = -s1 * (r23 - r12 * cos2) / r23 - s4 * r43 * cos3 / r23
+                    BMatrix[i, i3 * 3: i3 * 3 + 3] = -s4 * (r32 - r43 * cos3) / r32 - s1 * r12 * cos2 / r32
+                    BMatrix[i, i4 * 3: i4 * 3 + 3] = s4
+            
+            return BMatrix
+        
+        BMatrix = WilsonBMatrix(qCoord, zIndices)
+        GMatrix = np.matmul(BMatrix, np.matmul(np.diag(1.0 / Mass), BMatrix.T))
+    
+        e, a = np.linalg.eigh(GMatrix)
+        r = 0
+        for i in np.arange(len(e)):
+            if (e[i] <= input.de):
+                r += 1
+        e = e[r:]
+        a = a[:, r:]
+    
+        EMatrix = np.matmul(a, np.matmul(np.diag(1. / e), a.T))
+        return np.matmul(np.matmul(Mode.T, np.diag(1.0 / np.sqrt(Mass))), np.matmul(BMatrix.T, EMatrix))
 
-    e, a = np.linalg.eigh(GMatrix)
-    r = 0
-    for i in np.arange(len(e)):
-        if (e[i] <= input.de):
-            r += 1
-    e = e[r:]
-    a = a[:, r:]
-
-    EMatrix = np.matmul(a, np.matmul(np.diag(1. / e), a.T))
-    return np.matmul(np.matmul(Mode.T, np.diag(1.0 / np.sqrt(Mass))), np.matmul(BMatrix.T, EMatrix))
-
-# calculate HR via opt geometries (dushin)
-def Lambda4pCal():
     if (input.QCFlag.lower() == 'g16'):
         Name, InitCoord = g16.FchkRead('S1opt', 'coord')
         Name, FinalCoord = g16.FchkRead('S0freq', 'coord')
@@ -205,6 +205,9 @@ def Lambda4pCal():
         print('"QCFlag" now has only two options, "g16" or "orca"')
         exit()
     
+    Lambda10 = ES0S1 - ES0S0
+    Lambda01 = ES1S0 - ES1S1
+
     # remove imaginary frequency modes
     ModeNumber = len(ModeFreq)
     for i in np.arange(ModeNumber - 1, -1, -1):
@@ -215,11 +218,21 @@ def Lambda4pCal():
         
     R = WilsonMatrix(FinalCoord, Zindices, AtomMass, ModeVect.T)
     ModeQ0 = np.matmul(R, ZCoordDiff(FinalCoord, InitCoord, Zindices)) * ModeQ
+    HR = 0.5 * ModeQ0 * ModeQ0
+    LambdaDisp = ModeFreq * HR
 
-    return ES0S1 - ES0S0, ES1S0 - ES1S1, ModeFreq, ModeQ0
-    
-# calculate HR via force/gradient
-def LambdaForceCal():
+    ModeFreq /= (2 * np.pi * input.c * input.au2fs)
+    fout = open('../result_folder/HRfactor_disp.dat', 'w')
+    fout.writelines(' freq/cm^-1        Q            HR        lambda/cm^-1\n')
+    for i in np.arange(len(ModeFreq)):
+        fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(ModeFreq[i],
+                        ModeQ0[i], HR[i], LambdaDisp[i] / (2 * np.pi * input.c * input.au2fs)))
+    fout.close()
+
+    return Lambda10, Lambda01, np.sum(LambdaDisp)
+
+# calculate lambda/HR via force approach
+def LambdaForce():
     if (input.QCFlag.lower() == 'g16'):
         Gradient = g16.FchkRead('S1force', 'gradient')
         AtomMass, ModeFreq, ModeQ, ModeVect = g16.FchkRead('S0freq', 'vibration')
@@ -229,7 +242,7 @@ def LambdaForceCal():
     else:
         print('"QCFlag" now has only two options, "g16" or "orca"')
         exit()
-    
+
     # remove imaginary frequency modes
     ModeNumber = len(ModeFreq)
     for i in np.arange(ModeNumber - 1, -1, -1):
@@ -241,83 +254,21 @@ def LambdaForceCal():
     Gradient /= np.sqrt(AtomMass)
     ModeForce = np.dot(ModeVect, Gradient) / ModeQ
     ModeQ0 = ModeForce / (input.hbar * ModeFreq)
+    HR = 0.5 * ModeQ0 * ModeQ0
+    Lambda = ModeFreq * HR
 
-    return ModeFreq, ModeQ0
+    ModeFreq /= (2 * np.pi * input.c * input.au2fs)
+    fout = open('../result_folder/HRfactor_force.dat', 'w')
+    fout.writelines(' freq/cm^-1       Q             HR       lambda/cm^-1\n')
+    for i in np.arange(len(ModeFreq)):
+        fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(ModeFreq[i],
+                        ModeQ0[i], HR[i], Lambda[i] / (2 * np.pi * input.c * input.au2fs)))
+    fout.close()
 
-def HRCalculate():
-    results = {}
-    if ('force' in input.Properties and '4p' in input.Properties):
-        Lambda10,Lambda01,Freq,QDisp = Lambda4pCal()
-        Lambda10 *= input.au2eV
-        Lambda01 *= input.au2eV
-        HRDisp = 0.5 * QDisp * QDisp
-        LambdaDisp = Freq * HRDisp
-        Freq,QForce = LambdaForceCal()
-        HRForce = 0.5 * QForce * QForce
-        LambdaForce = Freq * HRForce
+    return np.sum(Lambda)
 
-        Freq /= (2 * np.pi * input.c * input.au2fs)
-        fout = open('../result_folder/HRfactor.dat', 'w')
-        fout.writelines(' freq/cm^-1       Qd            HRd      lambdad/cm^-1      Qf            HRf      lambdaf/cm^-1\n')
-        for i in np.arange(len(Freq)):
-            fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
-                            QDisp[i], HRDisp[i], LambdaDisp[i] / (2 * np.pi * input.c * input.au2fs),
-                            QForce[i], HRForce[i], LambdaForce[i] / (2 * np.pi * input.c * input.au2fs)))
-        fout.close()
-
-        results['lambda10'] = float(Lambda10)
-        results['lambda01'] = float(Lambda01)
-        results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
-        results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
-        results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
-    
-    elif ('force' in input.Properties):
-        Freq,QForce = LambdaForceCal()
-        HRForce = 0.5 * QForce * QForce
-        LambdaForce = Freq * HRForce
-
-        Freq /= (2 * np.pi * input.c * input.au2fs)
-        fout = open('../result_folder/HRfactor.dat', 'w')
-        fout.writelines(' freq/cm^-1      Qf            HRf      lambdaf/cm^-1\n')
-        for i in np.arange(len(Freq)):
-            fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
-                            QForce[i], HRForce[i], LambdaForce[i] / (2 * np.pi * input.c * input.au2fs)))
-        fout.close()
-        
-        results['lambdaForce'] = float(np.sum(LambdaForce) * input.au2eV)
-    
-    elif ('4p' in input.Properties):
-        Lambda10,Lambda01,Freq,QDisp = Lambda4pCal()
-        Lambda10 *= input.au2eV
-        Lambda01 *= input.au2eV
-        HRDisp = 0.5 * QDisp * QDisp
-        LambdaDisp = Freq * HRDisp
-
-        Freq /= (2 * np.pi * input.c * input.au2fs)
-        fout = open('../result_folder/HRfactor.dat', 'w')
-        fout.writelines(' freq/cm^-1       Qd            HRd      lambdad/cm^-1\n')
-        for i in np.arange(len(Freq)):
-            fout.writelines('{:10.4f}{:14.7f}{:14.7f}{:14.7f}\n'.format(Freq[i],
-                            QDisp[i], HRDisp[i], LambdaDisp[i] / (2 * np.pi * input.c * input.au2fs)))
-        fout.close()
-        
-        results['lambda10'] = float(Lambda10)
-        results['lambda01'] = float(Lambda01)
-        results['lambda4p'] = float((Lambda01 + Lambda10) * 0.5)
-        results['lambdaDisp'] = float(np.sum(LambdaDisp) * input.au2eV)
-    
-    else:
-        print('no property is calculated')
-        exit()
-    
-    os.system('mv S0opt* ../result_folder/')
-    os.system('mv S0freq* ../result_folder/')
-    if ('force' in input.Properties):
-        os.system('mv S1force* ../result_folder/')
-    if ('4p' in input.Properties):
-        os.system('mv S1opt* ../result_folder/')
-
-def BODCalculation():
+# calculate bond order difference
+def BOD():
     # Bond order
     # [Mayer, I., Chem. Phys. Lett., 1983, 97, 270.] for close shell
     # [Mayer, I. Int. J. Quantum Chem., 1986, XXIX, 73.] for open shell 
@@ -380,7 +331,7 @@ def BODCalculation():
     BOS1 = BondOrder(AOIndices, S, CS1a, CS1b)
 
     BODT = 0.0
-    fout.open('../result_folder/bod.dat', 'wt')
+    fout = open('../result_folder/BOD.dat', 'wt')
     for index in Zindices:
         if(index[2] == -1):
             a = index[0]
@@ -390,9 +341,100 @@ def BODCalculation():
             BODT += BOD * BOD
     fout.close()
 
-    results['BOD'] = BODT
+    return BODT
 
-def WriteOutput():
-    fout = open('../result_folder/result.yml', 'wt')
-    yaml.dump(results, fout)
-    fout.close()
+def SOC():
+    if (input.QCFlag.lower() == 'g16'):
+        print('"SOC" is only for ORCA now')
+    elif (input.QCFlag.lower() == 'orca'):
+        SOC0 = orca.LogRead('soc', 'soc')
+    else:
+        print('"QCFlag" now has only two options, "g16" or "orca"')
+        exit()
+
+    return SOC0
+
+def NAC():
+    if (input.QCFlag.lower() == 'g16'):
+        NACs0 = g16.FchkRead('S1nac', 'nac')
+        AtomMass, ModeFreq, ModeQ, ModeVect = g16.FchkRead('S0freq', 'vibration')
+    elif (input.QCFlag.lower() == 'orca'):
+        NACs0 = orca.LogRead('S1nac', 'nac')
+        AtomMass, ModeFreq, ModeQ, ModeVect = orca.LogRead('S0freq', 'vibration')
+    else:
+        print('"QCFlag" now has only two options, "g16" or "orca"')
+        exit()
+    
+    NACs = input.hbar * ModeFreq * 2 * np.pi * input.c * input.au2fs * np.dot(ModeVect, NACs0) / np.sqrt(ModeQ)
+    return NACs,ModeFreq  # unit: Hartree
+
+# Get S0 geometry via QC package
+def GeomCalculate():
+    # S0opt
+    QCCalculate('S0opt')
+    
+    # S1freq
+    QCCalculate('S0freq')
+    # check if S0 opt need to be rerun
+    while (QCCalculate('CheckFreq') == -1):
+        QCCalculate('S0freq')
+    
+    os.system('mv S0opt* ../result_folder/')
+    os.system('mv S0freq* ../result_folder/')
+
+# Calculate properties via QC package and homemake script, including
+# 'lambda_4p': reorganization energy via 4-point approach 
+# and reorganization energy/HR factor via displacement approach (J. Chem. Phys., 2001, 115, 9103.)
+# 'lambda_force': reorganization energy/HR factor via force approach (https://doi.org/10.1021/acs.jpclett.3c00749)
+# 'BOD': bond order difference under HOM->LUMO excitation assumption
+# 'SOC': spin-orbit coupling (only in ORCA)
+# 'MAC': nonadiabatic coupling
+def PropCalculate():
+    results = {}
+    # 'lambda_4p': reorganization energy via 4-point/displacement approach
+    if ('lambda_4p' in input.Properties):
+        QCCalculate('S1opt')
+
+        Lambda10,Lambda01,LambdaDisp = Lambda4p()
+        results['lambda_10'] = float(Lambda10)  # unit: Hartree
+        results['lambda_01'] = float(Lambda01)  # unit: Hartree
+        results['lambda_4p'] = float((Lambda01 + Lambda10) * 0.5)  # unit: Hartree
+        results['lambda_disp'] = float(LambdaDisp)  # unit: Hartree
+
+        os.system('mv S1opt* ../result_folder/')
+    
+    # 'lambda_force': reorganization energy/HR factor via force approach
+    if ('lambda_force' in input.Properties):
+        QCCalculate('S1force')
+
+        results['lambdaForce'] = LambdaForce()  # unit: Hartree
+
+        os.system('mv S1force* ../result_folder/')
+
+    # 'BOD': bond order difference under HOM->LUMO excitation assumption
+    if ('BOD' in input.Properties):
+        results['BOD'] = BOD()
+
+    if ('NAC' in input.Properties):
+        QCCalculate('S1nac')
+
+        NACs,Freqs = NAC()
+        results['NAC'] = np.sqrt(np.sum(NACs * NACs))  # unit: Hartree
+
+        os.system('mv S1nac* ../result_folder/')
+
+    if ('SOC' in input.Properties):
+        QCCalculate('soc')
+
+        SOC0 = SOC()
+        results['SOC'] = np.sqrt(SOC0[0][3] * SOC0[0][3] + SOC0[0][4] * SOC0[0][4] + SOC0[0][5] * SOC0[0][5])  # unit: Hartree (S0-T1)
+
+        os.system('mv S1nac* ../result_folder/')
+
+    if (len(results) == 0):
+        print('no property is calculated.')
+        exit()
+    else:
+        fout = open('../result_folder/result.yml', 'wt')
+        yaml.dump(results, fout)
+        fout.close()

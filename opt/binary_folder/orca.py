@@ -197,10 +197,10 @@ def LogRead(logfile, keyword):
                     Gradient += [data[3], data[4], data[5]]
                     line = fin.readline()
                 fin.close()
-                return np.array(Gradient, dtype=float)  # unit: Hartree/Bohr
+                return np.array(Gradient, dtype=float)  # unit: Hartree/Bohr (3N 1D-array)
             line = fin.readline()
         fin.close()
-        
+
         print('error of orca.LogRead(): No gradient information in {}'.format(logfile))
         exit()
 
@@ -358,7 +358,7 @@ def LogRead(logfile, keyword):
             if(len(words) > 2 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'Electrons' and not IfGetON):
                 IfGetON = True
                 OccNumber = int(words[-1]) // 2
-            elif(len(words) > 2 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and word[2] == '(A.U.)' and not IfGetEle):
+            elif(len(words) > 2 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)' and not IfGetEle):
                 IfGetEle = True
                 fin.readline()
                 fin.readline()
@@ -396,7 +396,27 @@ def LogRead(logfile, keyword):
 
     # return nonadiabatic coupling between S0 and S1
     elif (keyword.lower() == 'nac'):
-        NAC = []
+        line = fin.readline()
+        while (len(line) != 0):
+            words = line.rstrip().split()
+            # read nonadiabatic coupling
+            if (len(words) == 2 and words[0] == 'CARTESIAN' and words[1] == 'NON-ADIABATIC' and words[2] == 'COUPLINGS'):
+                NAC = []
+                fin.readline()
+                fin.readline()
+                fin.readline()
+                line = fin.readline()
+                while (line != '\n'):
+                    data = line.rstrip().split()
+                    NAC += [data[3], data[4], data[5]]
+                    line = fin.readline()
+                fin.close()
+                return np.array(NAC, dtype=float)  # unit: 1/Bohr (3N 1D-array)
+            line = fin.readline()
+        fin.close()
+
+        print('error of orca.LogRead(): No nonadiabatic coupling information in {}'.format(logfile))
+        exit()
 
     # return spin-orbit couplings among singlet and triplet
     elif (keyword.lower() == 'soc'):
@@ -437,7 +457,7 @@ def LogRead(logfile, keyword):
         if (not IfGetHSR or not IfGetHSI):
             print('error of orca.LogRead(): No nonadiabatic coupling information in {}.log'.format(logfile))
             exit()
-        
+
         SOC = []
         for i in np.arange(RootNumber):
             for j in np.arange(RootNumber):

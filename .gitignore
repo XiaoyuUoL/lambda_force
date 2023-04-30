@@ -2,8 +2,8 @@
 **gjf**
 **log**
 **dat**
+**txt**
 **fchk**
 **xyz**
 **pyc**
-opt/result_folder/*
-opt/software_folder/*
+opt/software_folder/*/*

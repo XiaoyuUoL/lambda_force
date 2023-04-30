@@ -1,7 +1,7 @@
 calculator_id: lambda_force
 provides:
-- force
-- 4p
+- lambda_force
+- lambda_4p
 - BOD
 - SOC
 - NAC
