@@ -7,6 +7,7 @@ This repository provides
 There are three folders in `opt` folder:
 ### 1. `opt/binary_folder`
 Python codes (`.py` files) and input files (`.yml` files). The calculation system can be defined in the `molecule.yml` file. QC calculation options can be modified in the `calculator.yml` file. (e.g., `Software` for QC package, `ProcNumber` for parallel cores, `Functional` for DFT functional, etc.) Calculated electronic properties can also be modified in the `calculator.yml` file (`provides`), including
+
 (1). `lambda_4p`: reorganization energy/HR factor via 4-point and displacement approaches for S$_1$. (J. Chem. Phys., 2001, 115, 9103.)
 
 (2). `lambda_force`: reorganization energy/Huang-Rhys factor via force approach for S$_1$. (https://doi.org/10.1021/acs.jpclett.3c00749)
