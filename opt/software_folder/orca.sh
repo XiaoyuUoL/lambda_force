@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export SOFTWARE=/home/xiaoyu/work/code/python/lambda_force/opt/software_folder
+export SOFTWARE=/opt/software_folder
 
 # orca
 export ORCA=$SOFTWARE/orca_5_0_4_linux_x86-64_shared_openmpi411

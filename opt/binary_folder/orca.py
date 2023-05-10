@@ -43,26 +43,26 @@ options = {
     'S0freq': {},
     'S1force': {
         'tda': 'false',
-        'nroots': '5',
-        'iroot': '1',
+        'nroots': str(input.NRoots),
+        'iroot': str(input.IRoot),
         'printlevel': '4'
     },
     'S1opt': {
         'tda': 'false',
-        'nroots': '5',
-        'iroot': '1',
+        'nroots': str(input.NRoots),
+        'iroot': str(input.IRoot),
         'printlevel': '4'
     },
     'S1nac': {
         'tda': 'false',
-        'nroots': '5',
-        'iroot': '1',
+        'nroots': str(input.NRoots),
+        'iroot': str(input.IRoot),
         'nacme': 'true',
         'printlevel': '4'
     },
     'soc': {
         'tda': 'false',
-        'nroots': '5',
+        'nroots': str(input.NRoots),
         'dosoc': 'true',
         'printlevel': '4'
     }
@@ -117,7 +117,7 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read ground state energy
-            if (len(words) > 2 and words[0] == 'Total' and words[1] == 'Energy'):
+            if (len(words) > 2 and words[:2] == ['Total', 'Energy']):
                 e = float(words[3])
             line = fin.readline()
         fin.close()
@@ -128,14 +128,15 @@ def LogRead(logfile, keyword):
         print('error of orca.LogRead(): No ground state energy information in {}.log'.format(logfile))
         exit()
 
-    # 'energy': return energies of electronic excited state
+    # 'energy': return energies of electronic excited states
     if (keyword.lower() == 'energy-ex'):
         e = []
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
             # read excited state energies
-            if (len(words) > 2 and words[0] == 'TD-DFT' and words[1] == 'EXCITED'):
+            if (len(words) > 2 and words[:2] == ['TD-DFT', 'EXCITED']):
+                e = []
                 line = fin.readline()
                 while (len(line) != 0):
                     words = line.rstrip().split()
@@ -148,7 +149,7 @@ def LogRead(logfile, keyword):
         fin.close()
 
         if (len(e) != 0):
-            return e   # unit: Hartree
+            return e  # unit: Hartree
 
         print('error of orca.LogRead(): No excited state energy information in {}.log'.format(logfile))
         exit()
@@ -161,7 +162,7 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read atomic number and Cartesian coordinates
-            if (len(words) == 3 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)'):
+            if (words == ['CARTESIAN', 'COORDINATES', '(A.U.)']):
                 Name = []
                 Coord = []
                 fin.readline()
@@ -170,12 +171,12 @@ def LogRead(logfile, keyword):
                 while (line != '\n'):
                     data = line.rstrip().split()
                     Name.append(data[1])
-                    Coord.append([data[5], data[6], data[7]])  # unit: Bohr
+                    Coord.append(data[5:])  # unit: Bohr
                     line = fin.readline()
             line = fin.readline()
         fin.close()
 
-        if (len(Name) * len(Coord) != 0):
+        if (Name != [] and Coord != []):
             return Name, np.array(Coord, dtype=float)
 
         print('error of orca.LogRead(): No coordinate information in {}.log'.format(logfile))
@@ -187,14 +188,14 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read gradient
-            if (len(words) == 2 and words[0] == 'CARTESIAN' and words[1] == 'GRADIENT'):
+            if (words == ['CARTESIAN', 'GRADIENT']):
                 Gradient = []
                 fin.readline()
                 fin.readline()
                 line = fin.readline()
                 while (line != '\n'):
                     data = line.rstrip().split()
-                    Gradient += [data[3], data[4], data[5]]
+                    Gradient += data[3:]
                     line = fin.readline()
                 fin.close()
                 return np.array(Gradient, dtype=float)  # unit: Hartree/Bohr (3N 1D-array)
@@ -219,7 +220,7 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read atom number and atomic mass
-            if (len(words) == 3 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)'):
+            if (words == ['CARTESIAN', 'COORDINATES', '(A.U.)']):
                 IfGetAtom = True
                 fin.readline()
                 fin.readline()
@@ -227,10 +228,10 @@ def LogRead(logfile, keyword):
                 while (line != '\n'):
                     AtomNumber += 1
                     data = line.rstrip().split()
-                    AtomMass+= [data[4], data[4], data[4]]
+                    AtomMass += [data[4]] * 3
                     line = fin.readline()
             # read frequency
-            elif (len(words) == 2 and words[0] == 'VIBRATIONAL' and words[1] == 'FREQUENCIES' and IfGetAtom):
+            elif (words == ['VIBRATIONAL', 'FREQUENCIES'] and IfGetAtom):
                 IfGetVib = True
                 fin.readline()
                 fin.readline()
@@ -245,7 +246,7 @@ def LogRead(logfile, keyword):
                     else:
                         ZeroIndex.append(i)
             # read vibration vector
-            elif (len(words) == 2 and words[0] == 'NORMAL' and words[1] == 'MODES' and IfGetVib):
+            elif (words == ['NORMAL', 'MODES'] and IfGetVib):
                 IfGetMode = True
                 ModeVectTmp = np.zeros((AtomNumber * 3, AtomNumber * 3), dtype=float)
                 fin.readline()
@@ -266,7 +267,7 @@ def LogRead(logfile, keyword):
             exit()
 
         AtomMass = np.array(AtomMass, dtype=float) # unit: amu
-        ModeFreq = np.array(ModeFreq)
+        ModeFreq = np.array(ModeFreq, dtype=float)
         ModeFreq *= 2 * np.pi * input.c * input.au2fs  # unit: Hartree
 
         ModeVect = np.zeros((ModeNumber, AtomNumber * 3), dtype=float)
@@ -292,7 +293,7 @@ def LogRead(logfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if (len(words) == 3 and words[0] == 'Redundant' and words[1] == 'Internal' and words[2] == 'Coordinates'):
+            if (words == ['Redundant', 'Internal', 'Coordinates']):
                 ZIndices = []
                 fin.readline()
                 fin.readline()
@@ -322,7 +323,7 @@ def LogRead(logfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if(len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'basis' and words[3] == 'functions'):
+            if(len(words) > 4 and words[:4] == ['Number', 'of', 'basis', 'functions']):
                 return int(words[-1])
             line = fin.readline()
         fin.close()
@@ -355,10 +356,10 @@ def LogRead(logfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if(len(words) > 2 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'Electrons' and not IfGetON):
+            if(len(words) > 3 and words[:3] == ['Number', 'of', 'Electrons'] and not IfGetON):
                 IfGetON = True
                 OccNumber = int(words[-1]) // 2
-            elif(len(words) > 2 and words[0] == 'CARTESIAN' and words[1] == 'COORDINATES' and words[2] == '(A.U.)' and not IfGetEle):
+            elif(words == ['CARTESIAN', 'COORDINATES', '(A.U.)'] and not IfGetEle):
                 IfGetEle = True
                 fin.readline()
                 fin.readline()
@@ -369,7 +370,7 @@ def LogRead(logfile, keyword):
                     line = fin.readline()
                 BasisFunc = GetBasisFunc(Elements)
                 BasisNumber = np.sum(BasisFunc)
-            elif(len(words) == 2 and words[0] == 'MOLECULAR' and words[1] == 'ORBITALS'):
+            elif(words == ['MOLECULAR', 'ORBITALS']):
                 IfGetMO = True
                 MOCoeff = np.zeros((BasisNumber, BasisNumber), dtype=float)
                 fin.readline()
@@ -400,7 +401,7 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read nonadiabatic coupling
-            if (len(words) == 2 and words[0] == 'CARTESIAN' and words[1] == 'NON-ADIABATIC' and words[2] == 'COUPLINGS'):
+            if (words == ['CARTESIAN', 'NON-ADIABATIC', 'COUPLINGS']):
                 NAC = []
                 fin.readline()
                 fin.readline()
@@ -429,12 +430,12 @@ def LogRead(logfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read number of roots
-            if(len(words) > 6 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'roots'):
+            if(len(words) > 3 and words[:3] == ['Number', 'of', 'roots']):
                 IfGetRN = True
                 RootNumber = int(words[-1])
                 HSOC = np.zeros((RootNumber * 4 + 1, RootNumber * 4 + 1), dtype = complex)
             # read real part of HSOC
-            elif(len(words) == 2 and words[0] == 'Real' and words[1] == 'part:' and IfGetRN):
+            elif(words == ['Real', 'part:'] and IfGetRN):
                 IfGetHSR = True
                 for i in np.arange((RootNumber * 4) // 6 + 1):
                     fin.readline()
@@ -443,7 +444,7 @@ def LogRead(logfile, keyword):
                         data = np.array(line.rstrip().split(), dtype = float)
                         HSOC[j, i * 6 : min(i * 6 + 6, RootNumber * 4 + 1)] = data[1:]
             # read image part of HSOC
-            elif(len(words) == 2 and words[0] == 'Image' and words[1] == 'part:' and IfGetRN):
+            elif(words == ['Image', 'part:'] and IfGetRN):
                 IfGetHSI = True
                 for i in np.arange((RootNumber * 4) // 6 + 1):
                     fin.readline()
@@ -461,9 +462,12 @@ def LogRead(logfile, keyword):
         SOC = []
         for i in np.arange(RootNumber):
             for j in np.arange(RootNumber):
-                # Sindex, Tindex, SOC(MS=0), SOC(MS=-1), SOC(MS=+1) (unit: Hartree)
-                SOC.append([i, j + 1, HSOC[j + RootNumber + 1, i], HSOC[j + RootNumber * 2 + 1, i], HSOC[j + RootNumber * 3 + 1, i]])
-        
+                # SOC: Sindex, Tindex, SOC(MS=0), SOC(MS=-1), SOC(MS=+1) (unit: Hartree)
+                SOC.append([i, j + 1,
+                            HSOC[j + RootNumber + 1, i],
+                            HSOC[j + RootNumber * 2 + 1, i],
+                            HSOC[j + RootNumber * 3 + 1, i]])
+
         return SOC
 
     else:

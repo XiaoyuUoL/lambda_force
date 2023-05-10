@@ -33,10 +33,17 @@ Memory = CalDict['specifications']['Memory']             # MB
 ProcNumber = CalDict['specifications']['ProcNumber']
 Functional = CalDict['specifications']['Functional']
 BasisSet = CalDict['specifications']['BasisSet']
+NRoots = CalDict['specifications']['NRoots']
+IRoot = CalDict['specifications']['IRoot']
+if (IRoot > NRoots):
+    print('error in calculator.yml: index of target state (IRoot) is larger than NRoots')
+    exit()
 #print('Memory:', Memory)
 #print('ProcNumber:', ProcNumber)
 #print('Functional:', Functional)
 #print('BasisSet:', BasisSet)
+#print('NRoots:', NRoots)
+#print('IRoot:', IRoot)
 
 # basis function of elements for different basis set
 BasisFunc = {}

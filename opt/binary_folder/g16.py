@@ -21,9 +21,12 @@ keywords = {
     'S0sp': [input.Functional, input.BasisSet],
     'S0opt': [input.Functional, input.BasisSet, 'opt=loose'],
     'S0freq': [input.Functional, input.BasisSet, 'freq'],
-    'S1force': [input.Functional, input.BasisSet, 'force', 'td(nstates=5,root=1)'],
-    'S1opt': [input.Functional, input.BasisSet, 'opt', 'td(nstates=5,root=1)'],
-    'S1nac': [input.Functional, input.BasisSet, 'td(nstates=5,root=1,NonAdiabaticCoupling)'],
+    'S1force': [input.Functional, input.BasisSet, 'force',
+                'td(nstates={:d},root={:d})'.format(input.NRoots, input.IRoot)],
+    'S1opt': [input.Functional, input.BasisSet, 'opt',
+              'td(nstates={:d},root={:d})'.format(input.NRoots, input.IRoot)],
+    'S1nac': [input.Functional, input.BasisSet,
+             'td(nstates={:d},root={:d},NonAdiabaticCoupling)'.format(input.NRoots, input.IRoot)],
 }
 
 def InitPara(task):
@@ -72,7 +75,7 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read SCF energy
-            if (len(words) > 2 and words[0] == 'SCF' and words[1] == 'Energy'):
+            if (len(words) > 2 and words[:2] == ['SCF', 'Energy']):
                 fin.close()
                 return float(words[3])  # unit: Hartree
             line = fin.readline()
@@ -123,16 +126,16 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read number of atoms
-            if (len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
+            if (len(words) > 3 and words[:3] == ['Number', 'of', 'atoms']):
                 IfGetAN = True
                 AtomNumber = int(words[4])
             # read atomic number (name)
-            elif (len(words) > 2 and words[0] == 'Atomic' and words[1] == 'numbers' and IfGetAN):
+            elif (len(words) > 2 and words[:2] == ['Atomic', 'numbers'] and IfGetAN):
                 IfGetName = True
                 for i in range(int((AtomNumber - 1) / 6) + 1):
                     Name += fin.readline().rstrip().split()
             # read Cartesian coordinates
-            elif (len(words) > 3 and words[0] == 'Current' and words[1] == 'cartesian' and words[2] == 'coordinates' and IfGetAN):
+            elif (len(words) > 3 and words[:3] == ['Current', 'cartesian', 'coordinates'] and IfGetAN):
                 IfGetCoord = True
                 for i in np.arange(int((AtomNumber * 3 - 1) / 5) + 1):
                     Coord += fin.readline().rstrip().split()
@@ -154,11 +157,11 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read number of atoms
-            if (len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
+            if (len(words) > 3 and words[:3] == ['Number', 'of', 'atoms']):
                 IfGetAN = True
                 AtomNumber = int(words[4])
             # read gradient
-            elif (len(words) > 2 and words[0] == 'Cartesian' and words[1] == 'Gradient' and IfGetAN):
+            elif (len(words) > 2 and words[:2] == ['Cartesian', 'Gradient'] and IfGetAN):
                 Gradient = []
                 for i in np.arange(int((AtomNumber * 3 - 1) / 5) + 1):
                     Gradient += fin.readline().rstrip().split()
@@ -186,11 +189,11 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read number of atoms
-            if (len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
+            if (len(words) > 3 and words[:3] == ['Number', 'of', 'atoms']):
                 IfGetAN = True
                 AtomNumber = int(words[4])
             # read number of normal modes
-            elif (len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'Normal' and words[3] == 'Modes'):
+            elif (len(words) > 4 and words[:4] == ['Number', 'of', 'Normal', 'Modes']):
                 IfGetMN = True
                 ModeNumber = int(words[5])
             # read information of atom masses (3N 1D-array)
@@ -244,7 +247,7 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read redundant internal coordinate indices
-            if (len(words) > 4 and words[0] == 'Redundant' and words[1] == 'internal' and words[2] == 'coordinate' and words[3] == 'indices'):
+            if (len(words) > 4 and words[:4] == ['Redundant', 'internal', 'coordinate', 'indices']):
                 ZCoordNumber = int(words[6]) // 4
                 ZIndices = []
                 for i in np.arange(int((ZCoordNumber * 4 - 1) / 6) + 1):
@@ -267,7 +270,7 @@ def FchkRead(fchkfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if(len(words) > 4 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'basis' and words[3] == 'functions'):
+            if(len(words) > 4 and words[:4] == ['Number', 'of', 'basis', 'functions']):
                 fin.close()
                 return int(words[-1])
             line = fin.readline()
@@ -302,11 +305,11 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read number of alpha/beta electrons (index for HOMO)
-            if(len(words) > 2 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'alpha' and words[3] == 'electrons'):
+            if(len(words) > 4 and words[:4] == ['Number', 'of', 'alpha', 'electrons']):
                 IfGetON = True
                 OccNumber = int(words[-1])
             # read atomic number of atoms
-            elif(len(words) > 2 and words[0] == 'Atomic' and words[1] == 'numbers'):
+            elif(len(words) > 2 and words[:2] == ['Atomic', 'numbers']):
                 IfGetAN = True
                 AtomNumber = int(words[-1])
                 for i in range(int((AtomNumber - 1) / 6) + 1):
@@ -314,7 +317,7 @@ def FchkRead(fchkfile, keyword):
                 BasisFunc = GetBasisFunc(Elements)
                 BasisNumber = np.sum(BasisFunc)
             # read MO coefficients
-            elif(len(words) > 5 and words[0] == 'Alpha' and words[1] == 'MO' and words[2] == 'coefficients' and IfGetON and IfGetAN):
+            elif(len(words) > 3 and words[:3] == ['Alpha', 'MO', 'coefficients'] and IfGetON and IfGetAN):
                 IfGetMO = True
                 for i in np.arange(int((BasisNumber * BasisNumber - 1) / 5) + 1):
                     MOCoeff += fin.readline().rstrip().split()
@@ -331,7 +334,7 @@ def FchkRead(fchkfile, keyword):
         indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]), list(np.cumsum(BasisFunc))]).T # indices of basis function for each atom
 
         return indices, AOoverlap, MOCoeff[:, :OccNumber], MOCoeff[:, OccNumber:]
-        
+
     # return nonadiabatic coupling
     elif (keyword.lower() == 'nac'):
         IfGetAN = False
@@ -342,11 +345,11 @@ def FchkRead(fchkfile, keyword):
         while (len(line) != 0):
             words = line.rstrip().split()
             # read number of atoms
-            if (len(words) > 3 and words[0] == 'Number' and words[1] == 'of' and words[2] == 'atoms'):
+            if (len(words) > 3 and words[:3] == ['Number', 'of', 'atoms']):
                 IfGetAN = True
                 AtomNumber = int(words[4])
             # read nonadiabatic coupling
-            elif(len(words) > 2 and words[0] == 'Nonadiabatic' and words[1] == 'coupling' and IfGetAN):
+            elif(len(words) > 2 and words[:2] == ['Nonadiabatic', 'coupling'] and IfGetAN):
                 IFGetNAC = True
                 for i in np.arange(int((AtomNumber * 3 - 1) / 5) + 1):
                     NAC += fin.readline().rstrip().split()
@@ -356,8 +359,8 @@ def FchkRead(fchkfile, keyword):
         if (not IFGetNAC):
             print('error of g16.ReadFchk(): No nonadiabatic coupling information in {}.fchk'.format(fchkfile))
             exit()
-        
-        NAC = np.array(NAC, dtype=float())  # unit: 1/Bohr (3N 1D-array)
+
+        NAC = np.array(NAC, dtype=float)  # unit: Hartree/Bohr (3N 1D-array)
         return NAC
 
     else:

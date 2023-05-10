@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export SOFTWARE=/home/xiaoyu/work/code/python/lambda_force/opt/software_folder
+export SOFTWARE=/opt/software_folder
 
 # g16
 export G16=$SOFTWARE

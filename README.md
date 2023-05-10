@@ -45,6 +45,9 @@ docker run lambda_force:vXXX
 
 ### Notice: if users want to use the Python scripts instead of creating the docker image, they should modify `.sh` files in `opt/software_folder` (value of `SOFTWARE`) and then run
 ```shell
-cd opt/binary_folder
+cd opt/software_folder
+source g16.sh
+source orca.sh
+cd ../binary_folder
 python main.py
 ```

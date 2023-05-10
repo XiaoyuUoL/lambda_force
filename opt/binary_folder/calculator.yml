@@ -1,15 +1,17 @@
 calculator_id: lambda_force
 provides:
-- lambda_force
-- lambda_4p
-- BOD
-- SOC
-- NAC
+- lambda_4p  # reorganization energy and HR factor of singlet excited state via 4-point and displacement approach
+- lambda_force  # reorganization energy and HR factor of  singlet excited state via force approach
+- BOD  # bond-order difference between HF configuration and HOMO->LUMO excitation configuration
+- NAC  # Nonadiabatic coupling between S0 and singlet excited state
+#- SOC  # spin-orbit coupling between S0 and triplet state (only ORCA now)
 specifications:
-  MMFF: mmff94
-  Software: orca
-  ProcNumber: 4
-  Memory: 10000
-  Functional: b3lyp
-  BasisSet: def2-TZVP
-  ImagFreq: 0.
+  MMFF: mmff94  # FF for initial geometry
+  Software: g16  # QC package (only orca and g16 now)
+  ProcNumber: 4  # parallel cores
+  Memory: 10000  # calculation memory 
+  Functional: b3lyp  # DFT functional
+  BasisSet: 3-21g  # basis set (name only different in ORCA and g16)
+  NRoots: 5  # number of excited states for TDDFT calculations
+  IRoot: 1  # target excited states (singlet for all except SOC); default 1 for S1 (T1 for SOC)
+  ImagFreq: 0.  # can be set using negative value if S0opt is difficult
