@@ -8,17 +8,17 @@ There are three folders in `opt` folder:
 ### 1. `opt/binary_folder`
 Python codes (`.py` files) and input files (`.yml` files). The calculation system can be defined in the `molecule.yml` file. QC calculation options can be modified in the `calculator.yml` file. (e.g., `Software` for QC package, `ProcNumber` for parallel cores, `Functional` for DFT functional, etc.) Calculated electronic properties can also be modified in the `calculator.yml` file (`provides`), including
 
-(1). `lambda_4p`: reorganization energy/HR factor via 4-point and displacement approaches for S$_1$. (J. Chem. Phys., 2001, 115, 9103.)
+(1). `lambda_4p`: reorganization energy/HR factor via 4-point and displacement approaches for S$_1$. (J. Chem. Phys., 2001, 115, 9103.) Unit: Hartree
 
-(2). `lambda_force`: reorganization energy/Huang-Rhys factor via force approach for S$_1$. (https://doi.org/10.1021/acs.jpclett.3c00749)
+(2). `lambda_force`: reorganization energy/Huang-Rhys factor via force approach for S$_1$. ([J. Phys. Chem. Lett. 2023, 14, 4119–4126]) Unit: Hartree
 
 (3). `BOD`: bond order difference between closed-shell configuration (usually S$_0$) and HOMO->LUMO excitation configuration (usually S$_1$ state).
 
-(4). `NAC`: nonadiabatic coupling between S$_0$ and S$_1$.
+(4). `NAC`: nonadiabatic coupling between S$_0$ and S$_1$. Unit: Hartree
 
-(5). `SOC`: spin-orbit coupling (only ORCA available now) between singlet and triplet states.
+(5). `SOC`: spin-orbit coupling (only ORCA available now) between singlet and triplet states. Unit: Hartree
 
-Here, (1), (2), and (3) are related to https://doi.org/10.1021/acs.jpclett.3c00749; (4) and (5) are related to [J. Chem. Phys. 2022, 157, 134106.]
+Here, (1), (2), and (3) are related to [J. Phys. Chem. Lett. 2023, 14, 4119–4126]; (4) and (5) are related to [J. Chem. Phys. 2022, 157, 134106.]
 
 ### 2. `opt/software_folder`
 Thirds party software is not in GitHub, considering the copyright issue. There are only examples of loading scripts (`.sh` files). Users should provide QC packages themselves, and the name of packages should be consistent with loading scripts. For example, Gaussian 16 (`opt/software_folder/G16` and `g16.sh`) and ORCA 5.0.4 (`opt/software_folder/orca_5_0_4_linux_x86-64_shared_openmpi411` and `orca.sh`).
