@@ -16,25 +16,25 @@ CalDict = yaml.safe_load(CalInput)
 CalInput.close()
 
 # parameters for conversion from smiles to xyz
-FF = CalDict['specifications']['MMFF']                   # forcefield for mol.localopt()
+FF = CalDict['specification']['MMFF']                   # forcefield for mol.localopt()
 StepsInit =  20                                          # steps for initial conformation
 StepsOpt =  1000                                         # steps for mol.localopt()
 #print('FF:', FF)
 
 # QC package ('g16' or 'orca')
-QCFlag = CalDict['specifications']['Software']
+QCFlag = CalDict['specification']['Software']
 if (QCFlag.lower() != 'g16' and QCFlag.lower() != 'orca'):
     print('"QCFlag" now has only two options: g16 or orca')
     exit()
 #print('QCFlag:', QCFlag)
 
 # computation/calculation details
-Memory = CalDict['specifications']['Memory']             # MB
-ProcNumber = CalDict['specifications']['ProcNumber']
-Functional = CalDict['specifications']['Functional']
-BasisSet = CalDict['specifications']['BasisSet']
-NRoots = CalDict['specifications']['NRoots']
-IRoot = CalDict['specifications']['IRoot']
+Memory = CalDict['specification']['Memory']             # MB
+ProcNumber = CalDict['specification']['ProcNumber']
+Functional = CalDict['specification']['Functional']
+BasisSet = CalDict['specification']['BasisSet']
+NRoots = CalDict['specification']['NRoots']
+IRoot = CalDict['specification']['IRoot']
 if (IRoot > NRoots):
     print('error in calculator.yml: index of target state (IRoot) is larger than NRoots')
     exit()
@@ -53,7 +53,7 @@ dq = 1e-5                                                # dq for numerical Wils
 de = 1e-5                                                # threshold for discarding eigenvectors of GMatrix
 
 # Freq check for S0opt
-ImagFreq = CalDict['specifications']['ImagFreq']
+ImagFreq = CalDict['specification']['ImagFreq']
 #print('ImagFreq:', ImagFreq)
 
 # Calculation properties

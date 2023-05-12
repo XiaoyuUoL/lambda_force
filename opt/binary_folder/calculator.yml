@@ -5,11 +5,11 @@ provides:
 - BOD  # bond-order difference between HF configuration and HOMO->LUMO excitation configuration
 - NAC  # Nonadiabatic coupling between S0 and singlet excited state
 #- SOC  # spin-orbit coupling between S0 and triplet state (only ORCA now)
-specifications:
+specification:
   MMFF: mmff94  # FF for initial geometry
   Software: g16  # QC package (only orca and g16 now)
   ProcNumber: 4  # parallel cores
-  Memory: 10000  # calculation memory 
+  Memory: 20000  # calculation memory 
   Functional: b3lyp  # DFT functional
   BasisSet: 3-21g  # basis set (name only different in ORCA and g16)
   NRoots: 5  # number of excited states for TDDFT calculations
