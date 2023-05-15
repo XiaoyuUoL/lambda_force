@@ -9,7 +9,7 @@ specification:
   MMFF: mmff94  # FF for initial geometry
   Software: g16  # QC package (only orca and g16 now)
   ProcNumber: 4  # parallel cores
-  Memory: 20000  # calculation memory 
+  #Memory: 5000  # calculation memory
   Functional: b3lyp  # DFT functional
   BasisSet: 3-21g  # basis set (name only different in ORCA and g16)
   NRoots: 5  # number of excited states for TDDFT calculations

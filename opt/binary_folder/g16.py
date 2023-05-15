@@ -39,7 +39,7 @@ def InitPara(task):
 def GjfGen(para):
     fout = open('{}.gjf'.format(para['file']), 'w')
     fout.writelines('%nprocshared={:d}\n'.format(para['procnumber']))
-    fout.writelines('%mem={}\n'.format(para['memory']))
+    #fout.writelines('%mem={}\n'.format(para['memory']))
     fout.writelines('%chk={}\n'.format(para['chkfile']))
     keywords = '#p'
     for keyword in para['keywords']:
