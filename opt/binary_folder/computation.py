@@ -428,8 +428,8 @@ def PropCalculate():
     results = {}
     # 'lambda_4p': reorganization energy via 4-point/displacement approach
     if ('lambda_4p' in input.Properties):
-        #QCCalculate('S1opt')
-        #QCCalculate('S1force')
+        QCCalculate('S1opt')
+        QCCalculate('S1force')
 
         Lambda10,Lambda01,LambdaDisp = Lambda4p()
         results['lambda_10'] = float(Lambda10)                                  # unit: Hartree
@@ -447,14 +447,14 @@ def PropCalculate():
 
     # 'lambda_force': reorganization energy/HR factor via force approach
     elif ('lambda_force' in input.Properties):
-        #QCCalculate('S1force')
+        QCCalculate('S1force')
 
         results['lambdaForce'] = float(LambdaForce())                           # unit: Hartree
 
         os.system('mv S1force* ../result_folder/')
 
     if ('NAC' in input.Properties):
-        #QCCalculate('S1nac')
+        QCCalculate('S1nac')
 
         NACs = NAC()
         results['NAC'] = float(np.sqrt(np.sum(NACs * NACs)))                    # unit: Hartree
@@ -462,7 +462,7 @@ def PropCalculate():
         os.system('mv S1nac* ../result_folder/')
 
     if ('SOC' in input.Properties):
-        #QCCalculate('soc')
+        QCCalculate('soc')
 
         SOC0 = SOC()
         results['SOC'] = float(SOC0[input.IRoot - 1][5])                        # unit: Hartree
