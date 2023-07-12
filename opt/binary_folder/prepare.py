@@ -31,9 +31,13 @@ def QCinput(task, name=None):
     if (input.QCFlag.lower() == 'g16'):
         g16.InitPara(task)
         if (task == 'S0opt'):
-            g16.para['name'],g16.para['coord'],g16.para['charge'],g16.para['multi'] = FromSmiles(input.SystemSmiles)
+            name,coord,charge,multi = FromSmiles(input.SystemSmiles)
+            g16.para['name'] = name
+            g16.para['coord'] = coord
+            g16.para['charge'] = charge
+            g16.para['multi'] = multi
         elif (task in ['S0freq', 'S1force', 'S1opt', 'S1nac']):
-            g16.para['name'], g16.para['coord'] = g16.FchkRead('S0opt', 'coord')
+            g16.para['name'],g16.para['coord'] = g16.FchkRead('S0opt', 'coord')
             g16.para['coord'] *= input.au2Angstrom
         elif (task == 'S0sp' and name != None):
             g16.para['name'] = [name]
@@ -50,7 +54,11 @@ def QCinput(task, name=None):
     elif (input.QCFlag.lower() == 'orca'):
         orca.InitPara(task)
         if (task == 'S0opt'):
-            orca.para['name'],orca.para['coord'],orca.para['charge'],orca.para['multi'] = FromSmiles(input.SystemSmiles)
+            name,coord,charge,multi = FromSmiles(input.SystemSmiles)
+            orca.para['name'] = name
+            orca.para['coord'] = coord
+            orca.para['charge'] = charge
+            orca.para['multi'] = multi
             if ('BOD' in input.Properties):
                 orca.para['keywords'].append('printMOs')
         elif (task in ['S0freq', 'S1force', 'S1opt', 'S1nac', 'soc']):
@@ -94,7 +102,7 @@ def CheckFreq():
                 vect /= np.sqrt(AtomMass)
                 vect /= np.sqrt(np.sum(vect * vect))
                 disp += np.reshape(vect, (-1, 3)) * np.random.rand()
-        disp /= 2. * np.sqrt(np.sum(disp * disp))    # |disp| = 0.5
+        disp /= 2. * np.sqrt(np.sum(disp * disp))                               # |disp| = 0.5
 
         task = 'S0opt'
         if (input.QCFlag.lower() == 'g16'):

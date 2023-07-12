@@ -92,7 +92,8 @@ def InpGen(para):
         fout.writelines('end\n')
     fout.writelines('*xyz {:d} {:d}\n'.format(para['charge'], para['multi']))
     for name, coord in zip(para['name'], para['coord']):
-        fout.writelines('{}{:14.7f}{:14.7f}{:14.7f}\n'.format(name, coord[0], coord[1], coord[2]))
+        fout.writelines('{}{:14.7f}{:14.7f}{:14.7f}\n'.format(
+            name, coord[0], coord[1], coord[2]))
     fout.writelines('*\n')
     fout.close()
 
@@ -123,7 +124,7 @@ def LogRead(logfile, keyword):
         fin.close()
 
         if (e != None):
-            return e  # unit: Hartree
+            return e                                                            # unit: Hartree
 
         print('error of orca.LogRead(): No ground state energy information in {}.log'.format(logfile))
         exit()
@@ -149,7 +150,7 @@ def LogRead(logfile, keyword):
         fin.close()
 
         if (len(e) != 0):
-            return e  # unit: Hartree
+            return e                                                            # unit: Hartree
 
         print('error of orca.LogRead(): No excited state energy information in {}.log'.format(logfile))
         exit()
@@ -171,7 +172,7 @@ def LogRead(logfile, keyword):
                 while (line != '\n'):
                     data = line.rstrip().split()
                     Name.append(data[1])
-                    Coord.append(data[5:])  # unit: Bohr
+                    Coord.append(data[5:])                                      # unit: Bohr
                     line = fin.readline()
             line = fin.readline()
         fin.close()
@@ -198,7 +199,7 @@ def LogRead(logfile, keyword):
                     Gradient += data[3:]
                     line = fin.readline()
                 fin.close()
-                return np.array(Gradient, dtype=float)  # unit: Hartree/Bohr (3N 1D-array)
+                return np.array(Gradient, dtype=float)                          # unit: Hartree/Bohr (3N 1D-array)
             line = fin.readline()
         fin.close()
 
@@ -215,7 +216,7 @@ def LogRead(logfile, keyword):
         ModeFreq = []
         ZeroIndex = []
         IfGetMode = False
-        ModeVectTmp = np.array([], dtype=float)
+        VectTmp = np.array([], dtype=float)
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
@@ -248,7 +249,7 @@ def LogRead(logfile, keyword):
             # read vibration vector
             elif (words == ['NORMAL', 'MODES'] and IfGetVib):
                 IfGetMode = True
-                ModeVectTmp = np.zeros((AtomNumber * 3, AtomNumber * 3), dtype=float)
+                VectTmp = np.zeros((AtomNumber * 3, AtomNumber * 3), dtype=float)
                 fin.readline()
                 fin.readline()
                 fin.readline()
@@ -258,7 +259,8 @@ def LogRead(logfile, keyword):
                 for i in np.arange((AtomNumber * 3 - 1)//6 + 1):
                     index = np.array(fin.readline().rstrip().split(), dtype=int)
                     for j in np.arange(AtomNumber * 3):
-                        ModeVectTmp[index, j] = np.array(fin.readline().rstrip().split()[1:], dtype=float)
+                        data = fin.readline().rstrip().split()
+                        VectTmp[index, j] = np.array(data[1:], dtype=float)
             line = fin.readline()
         fin.close()
 
@@ -266,20 +268,20 @@ def LogRead(logfile, keyword):
             print('error of orca.LogRead(): No normal mode information in {}.log'.format(logfile))
             exit()
 
-        AtomMass = np.array(AtomMass, dtype=float) # unit: amu
+        AtomMass = np.array(AtomMass, dtype=float)                              # unit: amu
         ModeFreq = np.array(ModeFreq, dtype=float)
-        ModeFreq *= 2 * np.pi * input.c * input.au2fs  # unit: Hartree
+        ModeFreq *= 2 * np.pi * input.c * input.au2fs                           # unit: Hartree
 
         ModeVect = np.zeros((ModeNumber, AtomNumber * 3), dtype=float)
         index = 0
         for i in np.arange(AtomNumber * 3):
             if i not in ZeroIndex:
-                ModeVect[index, :] = ModeVectTmp[i, :]
+                ModeVect[index, :] = VectTmp[i, :]
                 index += 1
         for i in np.arange(AtomNumber * 3):
             ModeVect[:, i] *= np.sqrt(AtomMass[i])
         for i in np.arange(ModeNumber):
-                ModeVect[i, :] /= np.sqrt(np.sum(ModeVect[i, :] * ModeVect[i, :]))
+            ModeVect[i, :] /= np.sqrt(np.sum(ModeVect[i, :] * ModeVect[i, :]))
 
         ModeQ = np.zeros_like(ModeFreq)
         for i,freq in enumerate(ModeFreq):
@@ -304,11 +306,14 @@ def LogRead(logfile, keyword):
                 while ('---' not in line):
                     data = line.rstrip().split()
                     if (data[1][0] == 'B'):
-                        ZIndices.append([int(data[2][:-2]), int(data[3][:-1]), -1, -1])
+                        ZIndices.append([int(data[2][:-2]), int(data[3][:-1]),
+                            -1, -1])
                     elif (data[1][0] == 'A'):
-                        ZIndices.append([int(data[2][:-2]), int(data[3][:-2]), int(data[4][:-1]), -1])
+                        ZIndices.append([int(data[2][:-2]), int(data[3][:-2]),
+                            int(data[4][:-1]), -1])
                     else:
-                        ZIndices.append([int(data[2][:-2]), int(data[3][:-2]), int(data[4][:-2]), int(data[5][:-1])])
+                        ZIndices.append([int(data[2][:-2]), int(data[3][:-2]),
+                            int(data[4][:-2]), int(data[5][:-1])])
                     line = fin.readline()
                 fin.close()
                 return ZIndices
@@ -323,7 +328,8 @@ def LogRead(logfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if(len(words) > 4 and words[:4] == ['Number', 'of', 'basis', 'functions']):
+            if(len(words) > 4 and words[:4] == ['Number', 'of', 'basis',
+                'functions']):
                 return int(words[-1])
             line = fin.readline()
         fin.close()
@@ -356,10 +362,12 @@ def LogRead(logfile, keyword):
         line = fin.readline()
         while (len(line) != 0):
             words = line.rstrip().split()
-            if(len(words) > 3 and words[:3] == ['Number', 'of', 'Electrons'] and not IfGetON):
+            if(len(words) > 3 and words[:3] == ['Number', 'of', 'Electrons']
+                and not IfGetON):
                 IfGetON = True
                 OccNumber = int(words[-1]) // 2
-            elif(words == ['CARTESIAN', 'COORDINATES', '(A.U.)'] and not IfGetEle):
+            elif(words == ['CARTESIAN', 'COORDINATES', '(A.U.)']
+                and not IfGetEle):
                 IfGetEle = True
                 fin.readline()
                 fin.readline()
@@ -380,7 +388,8 @@ def LogRead(logfile, keyword):
                     fin.readline()
                     fin.readline()
                     for j in np.arange(BasisNumber):
-                        MOCoeff[j, index] = np.array(fin.readline().rstrip().split()[2:], dtype=float)
+                        data = fin.readline().rstrip().split()
+                        MOCoeff[j, index] = np.array(data[2:], dtype=float)
             line = fin.readline()
         fin.close()
 
@@ -391,7 +400,8 @@ def LogRead(logfile, keyword):
         AOoverlap = MatrixPower(np.matmul(MOCoeff, MOCoeff.T), -1.0)
 
         # indices of basis function for each atom
-        indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]), list(np.cumsum(BasisFunc))]).T
+        indices = np.array([[0] + list(np.cumsum(BasisFunc)[:-1]),
+            list(np.cumsum(BasisFunc))]).T
 
         return indices, AOoverlap, MOCoeff[:, :OccNumber], MOCoeff[:, OccNumber:]
 
@@ -412,7 +422,7 @@ def LogRead(logfile, keyword):
                     NAC += [data[3], data[4], data[5]]
                     line = fin.readline()
                 fin.close()
-                return np.array(NAC, dtype=float)  # unit: 1/Bohr (3N 1D-array)
+                return np.array(NAC, dtype=float)                               # unit: 1/Bohr (3N 1D-array)
             line = fin.readline()
         fin.close()
 
@@ -422,6 +432,7 @@ def LogRead(logfile, keyword):
     # return spin-orbit couplings among singlet and triplet
     elif (keyword.lower() == 'soc'):
         RootNumber = None
+        BasisNumber = None
         IfGetRN = False
         HSOC = []
         IfGetHSR = False
@@ -433,25 +444,26 @@ def LogRead(logfile, keyword):
             if(len(words) > 3 and words[:3] == ['Number', 'of', 'roots']):
                 IfGetRN = True
                 RootNumber = int(words[-1])
-                HSOC = np.zeros((RootNumber * 4 + 1, RootNumber * 4 + 1), dtype = complex)
+                BasisNumber = RootNumber * 4 + 1
+                HSOC = np.zeros((BasisNumber, BasisNumber), dtype=complex)
             # read real part of HSOC
             elif(words == ['Real', 'part:'] and IfGetRN):
                 IfGetHSR = True
                 for i in np.arange((RootNumber * 4) // 6 + 1):
                     fin.readline()
-                    for j in np.arange(RootNumber * 4 + 1):
+                    for j in np.arange(BasisNumber):
                         line = fin.readline()
-                        data = np.array(line.rstrip().split(), dtype = float)
-                        HSOC[j, i * 6 : min(i * 6 + 6, RootNumber * 4 + 1)] = data[1:]
+                        data = np.array(line.rstrip().split(), dtype=float)
+                        HSOC[j, i*6:min(i*6+6, BasisNumber)] = data[1:]
             # read image part of HSOC
             elif(words == ['Image', 'part:'] and IfGetRN):
                 IfGetHSI = True
                 for i in np.arange((RootNumber * 4) // 6 + 1):
                     fin.readline()
-                    for j in np.arange(RootNumber * 4 + 1):
+                    for j in np.arange(BasisNumber):
                         line = fin.readline()
-                        data = np.array(line.rstrip().split(), dtype = float)
-                        HSOC[j, i * 6 : min(i * 6 + 6, RootNumber * 4 + 1)] += data[1:] * complex(0.0, 1.0)
+                        data = np.array(line.rstrip().split(), dtype=float)
+                        HSOC[j, i*6:min(i*6+6, BasisNumber)] += data[1:] * 1.j
             line = fin.readline()
         fin.close()
 
@@ -462,7 +474,7 @@ def LogRead(logfile, keyword):
         SOC = []
         for i in np.arange(RootNumber):
             for j in np.arange(RootNumber):
-                # SOC: Sindex, Tindex, SOC(MS=0), SOC(MS=-1), SOC(MS=+1) (unit: Hartree)
+                # SOC: Sindex, Tindex, SOC(MS=0), SOC(MS=-1), SOC(MS=+1)        unit: Hartree
                 SOC.append([i, j + 1,
                             HSOC[j + RootNumber + 1, i],
                             HSOC[j + RootNumber * 2 + 1, i],
